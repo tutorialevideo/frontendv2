@@ -195,6 +195,15 @@ const FinancialChart = ({ cui }) => {
           </>
         )}
       </div>
+
+      {/* Data Source Disclaimer */}
+      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+        <p className="text-xs text-amber-800 dark:text-amber-200">
+          ℹ️ <strong>Notă:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finanțelor). 
+          Valorile pentru anii anteriori sunt aproximate bazate pe ultimul an disponibil. 
+          Pentru date istorice complete, te rugăm să consulți direct rapoartele oficiale.
+        </p>
+      </div>
     </div>
   );
 };
