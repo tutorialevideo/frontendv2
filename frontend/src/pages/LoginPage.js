@@ -6,7 +6,7 @@ import { LogIn } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,10 +26,20 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
-      navigate('/account');
+      
+      // Wait a bit for user state to update
+      setTimeout(() => {
+        // Access user from context after login
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        if (currentUser.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/account');
+        }
+      }, 100);
     } catch (err) {
       setError(err.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };

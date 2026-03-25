@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdminLayout from '../components/AdminLayout';
-import { Users, TrendingUp, Heart, DollarSign, Activity, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, TrendingUp, Heart, DollarSign, Activity, ArrowUp, ArrowDown, Building2 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();

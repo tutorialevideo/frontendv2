@@ -31,20 +31,22 @@ async def search_companies(
     
     query = request.query.strip()
     
-    # Try to search by CUI first
+    # Try to search by CUI first (exact match, faster)
     if query.isdigit():
-        companies = await readonly_db.firme.find(
+        cursor = readonly_db.firme.find(
             {"cui": query}
-        ).limit(request.limit).to_list(length=request.limit)
+        ).limit(request.limit)
     else:
-        # Search by company name
-        companies = await readonly_db.firme.find(
-            {"denumire": {"$regex": query, "$options": "i"}}
-        ).limit(request.limit).to_list(length=request.limit)
+        # Search by company name (regex, slower but necessary)
+        cursor = readonly_db.firme.find(
+            {"denumire": {"$regex": f"^{query}", "$options": "i"}}  # Start with query for better performance
+        ).limit(request.limit)
     
-    # Convert ObjectId to string
-    for company in companies:
+    # Convert to list efficiently
+    companies = []
+    async for company in cursor:
         company["_id"] = str(company["_id"])
+        companies.append(company)
     
     return {"companies": companies, "count": len(companies)}
 
