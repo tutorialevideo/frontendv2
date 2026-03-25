@@ -43,6 +43,7 @@ from routes.admin_routes import router as admin_router
 from routes.admin_companies_routes import router as admin_companies_router
 from routes.admin_users_routes import router as admin_users_router
 from routes.admin_audit_routes import router as admin_audit_router
+from routes.postal_routes import router as postal_router
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -51,6 +52,7 @@ app.include_router(admin_router)
 app.include_router(admin_companies_router)
 app.include_router(admin_users_router)
 app.include_router(admin_audit_router)
+app.include_router(postal_router)
 
 @app.get("/api/health")
 async def health_check():
@@ -170,6 +172,8 @@ async def search_companies(
 async def get_company_by_cui(cui: str, current_user = Depends(get_current_user_optional)):
     """Get company by CUI"""
     db = get_companies_db()
+    from database import get_app_db
+    app_db = get_app_db()
     
     normalized_cui = normalize_cui(cui)
     result = await db.firme.find_one({"cui": normalized_cui})
@@ -181,12 +185,25 @@ async def get_company_by_cui(cui: str, current_user = Depends(get_current_user_o
     tier = current_user["tier"] if current_user else "public"
     
     profile = compute_company_profile(result, tier=tier)
+    
+    # Try to find postal code for the company
+    if app_db is not None and profile.get('judet') and profile.get('localitate'):
+        postal_code = await find_postal_code_for_company(
+            app_db, 
+            profile.get('judet'), 
+            profile.get('localitate')
+        )
+        if postal_code:
+            profile['cod_postal'] = postal_code
+    
     return serialize_doc(profile)
 
 @app.get("/api/company/slug/{slug}")
 async def get_company_by_slug(slug: str, current_user = Depends(get_current_user_optional)):
     """Get company by slug"""
     db = get_companies_db()
+    from database import get_app_db
+    app_db = get_app_db()
     
     # Extract CUI from slug (last part after last dash)
     parts = slug.rsplit("-", 1)
@@ -205,7 +222,77 @@ async def get_company_by_slug(slug: str, current_user = Depends(get_current_user
     tier = current_user["tier"] if current_user else "public"
     
     profile = compute_company_profile(result, tier=tier)
+    
+    # Try to find postal code for the company
+    if app_db is not None and profile.get('judet') and profile.get('localitate'):
+        postal_code = await find_postal_code_for_company(
+            app_db, 
+            profile.get('judet'), 
+            profile.get('localitate')
+        )
+        if postal_code:
+            profile['cod_postal'] = postal_code
+    
     return serialize_doc(profile)
+
+
+async def find_postal_code_for_company(app_db, judet: str, localitate: str) -> str:
+    """Find postal code for a company based on judet and localitate"""
+    if not judet or not localitate:
+        return None
+    
+    # Normalize text function
+    def normalize_text(text, is_bucuresti=False):
+        if not text:
+            return ""
+        replacements = {
+            'ş': 's', 'Ş': 'S', 'ș': 's', 'Ș': 'S',
+            'ţ': 't', 'Ţ': 'T', 'ț': 't', 'Ț': 'T',
+            'ă': 'a', 'Ă': 'A', 'â': 'a', 'Â': 'A',
+            'î': 'i', 'Î': 'I'
+        }
+        result = text
+        for old, new in replacements.items():
+            result = result.replace(old, new)
+        result = re.sub(r'\([^)]*\)', '', result).strip()
+        
+        upper_result = result.upper()
+        
+        # Special handling for București sectors
+        # Convert "BUCURESTI SECTORUL 1" to "SECTOR1"
+        if is_bucuresti:
+            import re as regex
+            sector_match = regex.search(r'SECTOR(?:UL)?\s*(\d)', upper_result)
+            if sector_match:
+                return f"SECTOR{sector_match.group(1)}"
+        
+        # Remove common prefixes
+        prefixes = ['MUNICIPIUL ', 'MUN. ', 'MUN ', 'ORASUL ', 'ORAS ', 
+                    'COMUNA ', 'COM. ', 'COM ', 'SATUL ', 'SAT ', 'SECTOR ']
+        for prefix in prefixes:
+            if upper_result.startswith(prefix):
+                upper_result = upper_result[len(prefix):].strip()
+                break
+        return upper_result
+    
+    judet_norm = normalize_text(judet)
+    
+    # Check if București
+    is_bucuresti = 'BUCUREST' in judet_norm or 'BUCUREST' in localitate.upper()
+    localitate_norm = normalize_text(localitate, is_bucuresti=is_bucuresti)
+    
+    try:
+        locality_match = await app_db.localities.find_one({
+            "judet_normalized": judet_norm,
+            "localitate_normalized": localitate_norm
+        })
+        
+        if locality_match:
+            return locality_match.get('primary_postal_code')
+    except Exception as e:
+        print(f"Error finding postal code: {e}")
+    
+    return None
 
 @app.get("/api/company/{cui}/financials")
 async def get_company_financials(cui: str):

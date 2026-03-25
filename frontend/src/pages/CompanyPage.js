@@ -136,6 +136,11 @@ const CompanyPage = () => {
                 <div className="flex items-center space-x-1">
                   <MapPin className="w-4 h-4" />
                   <span>{company.localitate}, {company.judet}</span>
+                  {company.cod_postal && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded">
+                      {company.cod_postal}
+                    </span>
+                  )}
                 </div>
                 {company.forma_juridica && (
                   <div className="flex items-center space-x-1">

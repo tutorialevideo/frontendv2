@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, DollarSign, Users } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, Users, BarChart3 } from 'lucide-react';
 
 const FinancialChart = ({ cui }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeMetric, setActiveMetric] = useState('cifra_afaceri');
-  const [dataSource, setDataSource] = useState('approximated'); // 'real' or 'approximated'
+  const [dataSource, setDataSource] = useState('approximated');
 
   useEffect(() => {
     loadFinancialData();
@@ -30,31 +29,70 @@ const FinancialChart = ({ cui }) => {
   };
 
   const formatCurrency = (value) => {
-    if (!value) return '0';
-    return new Intl.NumberFormat('ro-RO', {
-      style: 'decimal',
-      maximumFractionDigits: 0
-    }).format(value);
+    if (value === null || value === undefined) return '-';
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)} mil`;
+    }
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(0)} k`;
+    }
+    return new Intl.NumberFormat('ro-RO').format(value);
+  };
+
+  const formatFullCurrency = (value) => {
+    if (value === null || value === undefined) return '-';
+    return new Intl.NumberFormat('ro-RO').format(value) + ' RON';
   };
 
   const formatTooltipValue = (value, name) => {
-    if (name === 'numar_angajati') {
-      return [value, 'Angajați'];
-    }
-    return [`${formatCurrency(value)} RON`, name === 'cifra_afaceri' ? 'Cifră de afaceri' : 'Profit net'];
+    if (value === null || value === undefined) return ['-', name];
+    const label = name === 'cifra_afaceri' ? 'Cifra de afaceri' : 'Profit net';
+    return [formatFullCurrency(value), label];
   };
 
-  const metrics = [
-    { id: 'cifra_afaceri', label: 'Cifră de afaceri', icon: DollarSign, color: '#3b82f6' },
-    { id: 'profit_net', label: 'Profit net', icon: TrendingUp, color: '#10b981' },
-    { id: 'numar_angajati', label: 'Angajați', icon: Users, color: '#f59e0b' },
-  ];
+  // Calculate KPIs from data
+  const getKPIs = () => {
+    if (!data || data.length === 0) return null;
+
+    const lastYear = data[data.length - 1];
+    const prevYear = data.length > 1 ? data[data.length - 2] : null;
+
+    // Calculate growth percentages
+    const cifraGrowth = prevYear && prevYear.cifra_afaceri 
+      ? ((lastYear.cifra_afaceri - prevYear.cifra_afaceri) / prevYear.cifra_afaceri * 100)
+      : null;
+
+    const profitGrowth = prevYear && prevYear.profit_net !== null && prevYear.profit_net !== 0
+      ? ((lastYear.profit_net - prevYear.profit_net) / Math.abs(prevYear.profit_net) * 100)
+      : null;
+
+    const angajatiGrowth = prevYear && prevYear.numar_angajati 
+      ? ((lastYear.numar_angajati - prevYear.numar_angajati) / prevYear.numar_angajati * 100)
+      : null;
+
+    return {
+      cifra_afaceri: lastYear.cifra_afaceri,
+      cifra_growth: cifraGrowth,
+      profit_net: lastYear.profit_net,
+      profit_growth: profitGrowth,
+      numar_angajati: lastYear.numar_angajati,
+      angajati_growth: angajatiGrowth,
+      year: lastYear.year
+    };
+  };
+
+  const kpis = getKPIs();
 
   if (loading) {
     return (
       <div className="bg-card border border-border rounded-xl p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-secondary rounded w-1/3 mb-4"></div>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="h-24 bg-secondary rounded"></div>
+            <div className="h-24 bg-secondary rounded"></div>
+            <div className="h-24 bg-secondary rounded"></div>
+          </div>
           <div className="h-64 bg-secondary rounded"></div>
         </div>
       </div>
@@ -67,150 +105,177 @@ const FinancialChart = ({ cui }) => {
 
   return (
     <div className="bg-card border border-border rounded-xl p-6" data-testid="financial-chart">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-4">Evoluție date financiare</h3>
-        
-        {/* Metric Selector */}
-        <div className="flex flex-wrap gap-2">
-          {metrics.map((metric) => {
-            const Icon = metric.icon;
-            return (
-              <button
-                key={metric.id}
-                onClick={() => setActiveMetric(metric.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
-                  activeMetric === metric.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-border hover:bg-accent'
-                }`}
-                data-testid={`metric-button-${metric.id}`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{metric.label}</span>
-              </button>
-            );
-          })}
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-primary" />
+          Date financiare
+        </h3>
+        <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
+          {data[0]?.year} - {data[data.length - 1]?.year}
+        </span>
+      </div>
+
+      {/* KPI Cards - Similar to listafirme.ro */}
+      {kpis && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Cifra de afaceri KPI */}
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4" data-testid="kpi-cifra-afaceri">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">Cifra de afaceri</span>
+              <DollarSign className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+              {formatFullCurrency(kpis.cifra_afaceri)}
+            </div>
+            {kpis.cifra_growth !== null && (
+              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.cifra_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {kpis.cifra_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{kpis.cifra_growth >= 0 ? '+' : ''}{kpis.cifra_growth.toFixed(1)}% vs anul anterior</span>
+              </div>
+            )}
+          </div>
+
+          {/* Profit net KPI */}
+          <div className={`border rounded-lg p-4 ${
+            kpis.profit_net >= 0 
+              ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900' 
+              : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900'
+          }`} data-testid="kpi-profit-net">
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-sm font-medium ${kpis.profit_net >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                {kpis.profit_net >= 0 ? 'Profit net' : 'Pierdere neta'}
+              </span>
+              <TrendingUp className={`w-4 h-4 ${kpis.profit_net >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+            </div>
+            <div className={`text-2xl font-bold ${kpis.profit_net >= 0 ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
+              {formatFullCurrency(Math.abs(kpis.profit_net))}
+            </div>
+            {kpis.profit_growth !== null && (
+              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.profit_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {kpis.profit_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{kpis.profit_growth >= 0 ? '+' : ''}{kpis.profit_growth.toFixed(1)}% vs anul anterior</span>
+              </div>
+            )}
+          </div>
+
+          {/* Numar angajati KPI */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4" data-testid="kpi-angajati">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Numar angajati</span>
+              <Users className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+              {kpis.numar_angajati || '-'}
+            </div>
+            {kpis.angajati_growth !== null && (
+              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.angajati_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {kpis.angajati_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{kpis.angajati_growth >= 0 ? '+' : ''}{kpis.angajati_growth.toFixed(1)}% vs anul anterior</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Combined Line Chart - Cifra de afaceri + Profit net */}
+      <div className="mb-4">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-xs text-muted-foreground">Cifra de afaceri</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-xs text-muted-foreground">Profit net</span>
+          </div>
         </div>
       </div>
 
-      {/* Chart */}
       <ResponsiveContainer width="100%" height={300}>
-        {activeMetric === 'numar_angajati' ? (
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="year" 
-              stroke="#6b7280"
-              style={{ fontSize: '12px' }}
-            />
-            <YAxis 
-              stroke="#6b7280"
-              style={{ fontSize: '12px' }}
-            />
-            <Tooltip 
-              formatter={formatTooltipValue}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}
-            />
-            <Bar 
-              dataKey={activeMetric} 
-              fill={metrics.find(m => m.id === activeMetric)?.color}
-              radius={[8, 8, 0, 0]}
-            />
-          </BarChart>
-        ) : (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="year" 
-              stroke="#6b7280"
-              style={{ fontSize: '12px' }}
-            />
-            <YAxis 
-              stroke="#6b7280"
-              style={{ fontSize: '12px' }}
-              tickFormatter={(value) => `${formatCurrency(value / 1000)}k`}
-            />
-            <Tooltip 
-              formatter={formatTooltipValue}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey={activeMetric} 
-              stroke={metrics.find(m => m.id === activeMetric)?.color}
-              strokeWidth={3}
-              dot={{ fill: metrics.find(m => m.id === activeMetric)?.color, r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        )}
+        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="year" 
+            stroke="#6b7280"
+            style={{ fontSize: '12px' }}
+          />
+          <YAxis 
+            stroke="#6b7280"
+            style={{ fontSize: '12px' }}
+            tickFormatter={(value) => formatCurrency(value)}
+          />
+          <Tooltip 
+            formatter={formatTooltipValue}
+            labelFormatter={(label) => `Anul ${label}`}
+            contentStyle={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+          />
+          <Legend 
+            formatter={(value) => value === 'cifra_afaceri' ? 'Cifra de afaceri' : 'Profit net'}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="cifra_afaceri" 
+            stroke="#3b82f6"
+            strokeWidth={3}
+            dot={{ fill: '#3b82f6', r: 4 }}
+            activeDot={{ r: 6 }}
+            name="cifra_afaceri"
+          />
+          <Line 
+            type="monotone" 
+            dataKey="profit_net" 
+            stroke="#10b981"
+            strokeWidth={3}
+            dot={{ fill: '#10b981', r: 4 }}
+            activeDot={{ r: 6 }}
+            name="profit_net"
+          />
+        </LineChart>
       </ResponsiveContainer>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
-        {data.length > 0 && (
-          <>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Primii ani</div>
-              <div className="text-xl font-semibold">
-                {activeMetric === 'numar_angajati' 
-                  ? data[0][activeMetric] || 0
-                  : `${formatCurrency(data[0][activeMetric])} RON`}
-              </div>
-              <div className="text-xs text-muted-foreground">{data[0].year}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Ultimul an</div>
-              <div className="text-xl font-semibold">
-                {activeMetric === 'numar_angajati'
-                  ? data[data.length - 1][activeMetric] || 0
-                  : `${formatCurrency(data[data.length - 1][activeMetric])} RON`}
-              </div>
-              <div className="text-xs text-muted-foreground">{data[data.length - 1].year}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Creștere</div>
-              <div className={`text-xl font-semibold ${
-                ((data[data.length - 1][activeMetric] || 0) - (data[0][activeMetric] || 0)) >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}>
-                {(() => {
-                  const first = data[0][activeMetric] || 0;
-                  const last = data[data.length - 1][activeMetric] || 0;
-                  const growth = first > 0 ? ((last - first) / first * 100) : 0;
-                  return `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
-                })()}
-              </div>
-              <div className="text-xs text-muted-foreground">Total</div>
-            </div>
-          </>
-        )}
+      {/* Year-by-Year Data Table */}
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left py-2 px-3 font-medium text-muted-foreground">An</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Cifra afaceri</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Profit net</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Angajati</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.slice().reverse().map((item, index) => (
+              <tr key={item.year} className={`border-b border-border/50 ${index === 0 ? 'bg-primary/5' : ''}`}>
+                <td className="py-2 px-3 font-medium">{item.year}</td>
+                <td className="text-right py-2 px-3">{formatFullCurrency(item.cifra_afaceri)}</td>
+                <td className={`text-right py-2 px-3 ${item.profit_net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatFullCurrency(item.profit_net)}
+                </td>
+                <td className="text-right py-2 px-3">{item.numar_angajati || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Data Source Info */}
       {dataSource === 'real' ? (
         <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
           <p className="text-xs text-green-800 dark:text-green-200">
-            ✓ <strong>Date reale</strong> din bilanțurile oficiale publicate la Ministerul Finanțelor pentru toți anii afișați.
+            <strong>Date reale</strong> din bilanturile oficiale publicate la Ministerul Finantelor pentru toti anii afisati.
           </p>
         </div>
       ) : (
         <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
           <p className="text-xs text-amber-800 dark:text-amber-200">
-            ℹ️ <strong>Notă:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finanțelor). 
-            Valorile pentru anii anteriori sunt aproximate bazate pe ultimul an disponibil. 
-            Pentru date istorice complete, te rugăm să consulți direct rapoartele oficiale.
+            <strong>Nota:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finantelor). 
+            Valorile pentru anii anteriori sunt aproximate.
           </p>
         </div>
       )}
