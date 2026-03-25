@@ -1,0 +1,26 @@
+[
+  {
+    "content": "Phase 1 POC: Set up Elasticsearch + Redis in Docker",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 1 POC: Create ES index mapping with autocomplete + typo tolerance",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Write poc_index.py to bulk index 10k companies",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Write poc_query.py to test search performance",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: Validate <200ms p95 latency and typo tolerance",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 1 POC: All user stories tested and verified",
+    "status": "pending"
+  }
+]
