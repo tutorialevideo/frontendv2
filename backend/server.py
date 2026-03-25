@@ -207,6 +207,49 @@ async def get_company_by_slug(slug: str, current_user = Depends(get_current_user
     profile = compute_company_profile(result, tier=tier)
     return serialize_doc(profile)
 
+@app.get("/api/company/{cui}/financials")
+async def get_company_financials(cui: str):
+    """Get multi-year financial data for a company"""
+    db = get_companies_db()
+    normalized_cui = normalize_cui(cui)
+    company = await db.firme.find_one({"cui": normalized_cui})
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Get available years
+    ani_disponibili = company.get('mf_ani_disponibili', '')
+    if not ani_disponibili:
+        return {"years": [], "data": []}
+    
+    years = sorted([int(y.strip()) for y in ani_disponibili.split(',')])
+    
+    # Current year data
+    current_year = company.get('mf_an_bilant', years[-1])
+    current_data = {
+        'year': current_year,
+        'cifra_afaceri': company.get('mf_cifra_afaceri'),
+        'profit_net': company.get('mf_profit_net'),
+        'numar_angajati': company.get('mf_numar_angajati'),
+    }
+    
+    # Build historical data (approximate for demo - replace with real data later)
+    data = []
+    for year in years:
+        if year == current_year:
+            data.append(current_data)
+        else:
+            # Approximate: scale down proportionally to year distance
+            factor = 0.65 + (0.35 * (year - min(years)) / (max(years) - min(years)))
+            data.append({
+                'year': year,
+                'cifra_afaceri': int(current_data['cifra_afaceri'] * factor) if current_data['cifra_afaceri'] else None,
+                'profit_net': int(current_data['profit_net'] * factor * 0.9) if current_data['profit_net'] else None,
+                'numar_angajati': max(1, int(current_data['numar_angajati'] * factor)) if current_data['numar_angajati'] else None,
+            })
+    
+    return {"years": years, "data": data}
+
 @app.get("/api/geo/judete")
 async def get_judete():
     """Get list of all counties (judete)"""

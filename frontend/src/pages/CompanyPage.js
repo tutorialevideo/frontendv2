@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import FinancialChart from '../components/FinancialChart';
 
 const CompanyPage = () => {
   const { slug } = useParams();
@@ -195,7 +196,11 @@ const CompanyPage = () => {
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Financial Chart */}
+            <FinancialChart cui={company.cui} />
+            
+            <div className="grid md:grid-cols-2 gap-6">
             {/* Contact Info */}
             <div className="bg-card border border-border rounded-xl p-6">
               <h3 className="text-sm font-semibold mb-4">Informații de contact</h3>
@@ -405,6 +410,7 @@ const CompanyPage = () => {
                 </div>
               )}
             </dl>
+          </div>
           </div>
         )}
 
