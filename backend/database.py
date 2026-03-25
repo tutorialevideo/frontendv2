@@ -15,7 +15,7 @@ async def connect_to_databases():
     # Connect to companies database
     mongo_url = os.getenv("MONGO_URL")
     companies_client = AsyncIOMotorClient(mongo_url)
-    companies_db = companies_client["justporta"]
+    companies_db = companies_client["justportal"]
     
     # Connect to app database
     app_mongo_url = os.getenv("APP_MONGO_URL")
