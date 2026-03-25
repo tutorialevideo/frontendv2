@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, LogOut, Heart, CreditCard } from 'lucide-react';
+import { Search, User, LogOut, Heart, CreditCard, Coins } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCredits } from '../contexts/CreditsContext';
 
 const Header = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const { creditsBalance, freeViewsToday, systemEnabled, loading: creditsLoading } = useCredits();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = () => {
@@ -48,15 +50,29 @@ const Header = () => {
             </button>
 
             {isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                  data-testid="user-menu-button"
-                >
-                  <User className="w-4 h-4" />
-                  <span className="hidden sm:inline">{user?.name || user?.email}</span>
-                </button>
+              <div className="flex items-center space-x-2">
+                {/* Credits badge */}
+                {systemEnabled && !creditsLoading && (
+                  <Link
+                    to="/account/credits"
+                    className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors text-sm"
+                    title="Credite disponibile"
+                    data-testid="credits-badge"
+                  >
+                    <Coins className="w-4 h-4" />
+                    <span className="font-medium">{creditsBalance + freeViewsToday}</span>
+                  </Link>
+                )}
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                    data-testid="user-menu-button"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline">{user?.name || user?.email}</span>
+                  </button>
 
                 {showUserMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
@@ -88,6 +104,16 @@ const Header = () => {
                       <Heart className="w-4 h-4" />
                       <span>Favorite</span>
                     </Link>
+                    {systemEnabled && (
+                      <Link
+                        to="/account/credits"
+                        className="flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <Coins className="w-4 h-4" />
+                        <span>Credite ({creditsBalance})</span>
+                      </Link>
+                    )}
                     <Link
                       to="/account/subscription"
                       className="flex items-center space-x-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
@@ -106,6 +132,7 @@ const Header = () => {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center space-x-2">

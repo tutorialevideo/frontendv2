@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCredits } from '../contexts/CreditsContext';
 import api from '../services/api';
 import FinancialChart from '../components/FinancialChart';
 
@@ -13,13 +14,25 @@ const CompanyPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorite, setIsFavorite] = useState(false);
   const { user, isAuthenticated, token } = useAuth();
+  const { consumeCredit, systemEnabled } = useCredits();
+  const creditConsumedRef = useRef(false);
 
   useEffect(() => {
     loadCompany();
     if (isAuthenticated) {
       checkIfFavorite();
     }
+    // Reset credit consumed flag when slug changes
+    creditConsumedRef.current = false;
   }, [slug, isAuthenticated]);
+
+  // Consume credit after company is loaded
+  useEffect(() => {
+    if (company && isAuthenticated && systemEnabled && !creditConsumedRef.current) {
+      creditConsumedRef.current = true;
+      consumeCredit(company.cui);
+    }
+  }, [company, isAuthenticated, systemEnabled]);
 
   const loadCompany = async () => {
     setLoading(true);

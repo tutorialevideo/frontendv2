@@ -130,3 +130,101 @@ async def get_transactions(admin_user = Depends(verify_admin), skip: int = 0, li
         "skip": skip,
         "limit": limit
     }
+
+
+# ============ SETTINGS ENDPOINTS ============
+
+@router.get("/settings")
+async def get_admin_settings(admin_user = Depends(verify_admin)):
+    """Get all admin settings"""
+    app_db = get_app_db()
+    
+    # Get credits system setting
+    credits_setting = await app_db.app_settings.find_one({"key": "credits_system_enabled"})
+    credits_enabled = credits_setting.get("value", True) if credits_setting else True
+    
+    # Get credit packages setting (could be customizable in future)
+    
+    return {
+        "credits_system_enabled": credits_enabled,
+        "default_bonus_credits": 10,
+        "default_daily_free_views": 5,
+        "credit_packages": [
+            {"id": "pack_50", "credits": 50, "price": 9.99},
+            {"id": "pack_200", "credits": 200, "price": 29.99},
+            {"id": "pack_500", "credits": 500, "price": 59.99},
+        ]
+    }
+
+
+@router.post("/settings/credits-system/toggle")
+async def toggle_credits_system(admin_user = Depends(verify_admin)):
+    """Toggle credits system on/off"""
+    app_db = get_app_db()
+    
+    # Get current state
+    setting = await app_db.app_settings.find_one({"key": "credits_system_enabled"})
+    current_value = setting.get("value", True) if setting else True
+    new_value = not current_value
+    
+    # Update or insert
+    await app_db.app_settings.update_one(
+        {"key": "credits_system_enabled"},
+        {
+            "$set": {
+                "key": "credits_system_enabled",
+                "value": new_value,
+                "updated_at": datetime.utcnow(),
+                "updated_by": str(admin_user["_id"])
+            }
+        },
+        upsert=True
+    )
+    
+    # Log the action
+    await app_db.audit_logs.insert_one({
+        "admin_id": admin_user["_id"],
+        "admin_email": admin_user.get("email"),
+        "action": "toggle_credits_system",
+        "details": {"new_value": new_value},
+        "created_at": datetime.utcnow()
+    })
+    
+    return {
+        "success": True,
+        "credits_system_enabled": new_value,
+        "message": f"Sistemul de credite a fost {'activat' if new_value else 'dezactivat'}"
+    }
+
+
+@router.get("/credits/stats")
+async def get_credits_stats(admin_user = Depends(verify_admin)):
+    """Get credits system statistics"""
+    app_db = get_app_db()
+    
+    # Total users with credits
+    total_credit_users = await app_db.user_credits.count_documents({})
+    
+    # Total credits in circulation
+    pipeline = [
+        {"$group": {"_id": None, "total": {"$sum": "$credits_balance"}}}
+    ]
+    credits_result = await app_db.user_credits.aggregate(pipeline).to_list(length=1)
+    total_credits = credits_result[0]["total"] if credits_result else 0
+    
+    # Total views
+    views_pipeline = [
+        {"$group": {"_id": None, "total": {"$sum": "$total_views"}}}
+    ]
+    views_result = await app_db.user_credits.aggregate(views_pipeline).to_list(length=1)
+    total_views = views_result[0]["total"] if views_result else 0
+    
+    # Credit transactions
+    total_purchases = await app_db.credit_transactions.count_documents({"type": "purchase"})
+    
+    return {
+        "total_users_with_credits": total_credit_users,
+        "total_credits_in_circulation": total_credits,
+        "total_company_views": total_views,
+        "total_credit_purchases": total_purchases
+    }

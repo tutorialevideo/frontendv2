@@ -52,7 +52,7 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
    - Fixed Admin login redirection
    - Fixed React Helmet crash on SearchPage
 
-### Session 3 (Current) - CAEN Codes Integration
+### Session 3 - CAEN Codes Integration
 **Date: March 2026**
 
 #### Completed Features:
@@ -62,6 +62,42 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
    - Auto-lookup of CAEN description in company API endpoints
    - Display on CompanyPage: code, full description, section badge
    - 21 economic sections mapped (Agricultură, Industrie, Comerț, IT etc.)
+
+### Session 4 (Current) - Credits System
+**Date: March 2026**
+
+#### Completed Features:
+1. **Credits + Daily Free Views System** (P0) ✅
+   - User credits system: 10 bonus credits at registration
+   - 5 free company views per day (reset at midnight)
+   - Previously viewed companies are always free
+   - Credit packages: 50 (9.99 RON), 200 (29.99 RON), 500 (59.99 RON)
+   - Badge în header showing available credits + free views
+
+2. **Admin Toggle for Credits System** ✅
+   - Admin can enable/disable credits system with one click
+   - When disabled, all company views are unlimited
+   - Admin statistics: users with credits, credits in circulation, total views
+
+3. **New Collections Created:**
+   - `user_credits`: tracks balances, daily views, viewed companies
+   - `app_settings`: stores system-wide settings like credits_system_enabled
+   - `credit_transactions`: logs all credit purchases
+
+4. **New API Endpoints:**
+   - `GET /api/credits/status` - User credits balance
+   - `POST /api/credits/check-access` - Check if user can view company
+   - `POST /api/credits/consume` - Consume credit for company view
+   - `GET /api/credits/packages` - Available credit packages
+   - `POST /api/admin/settings/credits-system/toggle` - Toggle credits on/off
+   - `GET /api/admin/credits/stats` - Credits system statistics
+
+5. **New Frontend Components:**
+   - `CreditsContext.js` - Global credits state management
+   - `NoCreditsModal.js` - Modal when credits depleted
+   - `CreditsPage.js` - Page to purchase credits
+   - Updated `Header.js` with credits badge
+   - Updated `AdminDashboardPage.js` with toggle button
 
 ## Database Schema
 
@@ -76,6 +112,9 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 - `postal_codes` - 55,123 Romanian postal codes
 - `localities` - 13,856 aggregated locality records
 - `caen_codes` - 615 CAEN Rev.2 codes with descriptions
+- `user_credits` - User credit balances and viewed companies (NEW)
+- `app_settings` - System-wide settings (NEW)
+- `credit_transactions` - Credit purchase logs (NEW)
 
 ## Key API Endpoints
 
@@ -101,9 +140,12 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 - ✅ Financial chart with dual lines
 - ✅ Postal codes integration
 - ✅ CAEN codes integration with descriptions
+- ✅ Credits system with daily free views
+- ✅ Admin toggle for credits system
 
 ### P1 (High Priority)
-- [ ] Complete Stripe payment flow verification
+- [ ] Integrate Stripe checkout for credit purchases (currently simulated)
+- [ ] Complete Stripe payment flow verification for subscriptions
 - [ ] API key management for premium users
 - [ ] Admin subscription management
 
@@ -124,18 +166,26 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 │   ├── server.py (main FastAPI app)
 │   ├── database.py (dual DB connections)
 │   ├── routes/
+│   │   ├── credits_routes.py (NEW - credits system)
 │   │   ├── postal_routes.py
-│   │   ├── admin_companies_routes.py
+│   │   ├── admin_routes.py (UPDATED - toggle + stats)
 │   │   └── ...
 │   └── scripts/
 │       ├── import_postal_codes.py
-│       └── import_caen_codes.py (NEW - 615 CAEN Rev.2)
+│       └── import_caen_codes.py
 └── frontend/
     └── src/
+        ├── contexts/
+        │   ├── AuthContext.js
+        │   └── CreditsContext.js (NEW)
         ├── components/
-        │   └── FinancialChart.js (dual lines + KPIs)
+        │   ├── FinancialChart.js
+        │   ├── Header.js (UPDATED - credits badge)
+        │   └── NoCreditsModal.js (NEW)
         └── pages/
-            └── CompanyPage.js (postal code + CAEN display)
+            ├── CompanyPage.js (UPDATED - credit consumption)
+            ├── CreditsPage.js (NEW)
+            └── AdminDashboardPage.js (UPDATED - toggle)
 ```
 
 ## Notes for Next Developer

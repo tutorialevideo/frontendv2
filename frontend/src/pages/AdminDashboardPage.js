@@ -3,13 +3,16 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdminLayout from '../components/AdminLayout';
-import { Users, TrendingUp, Heart, DollarSign, Activity, ArrowUp, ArrowDown, Building2 } from 'lucide-react';
+import { Users, TrendingUp, Heart, DollarSign, Activity, ArrowUp, ArrowDown, Building2, Coins, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
   const { user, token, isAuthenticated } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(null);
+  const [creditsStats, setCreditsStats] = useState(null);
+  const [togglingCredits, setTogglingCredits] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -23,9 +26,17 @@ const AdminDashboardPage = () => {
     try {
       const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
       
-      const statsRes = await fetch(`${API_URL}/api/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const [statsRes, settingsRes, creditsStatsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_URL}/api/admin/settings`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_URL}/api/admin/credits/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
       
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -35,10 +46,40 @@ const AdminDashboardPage = () => {
         navigate('/account');
         return;
       }
+
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setSettings(settingsData);
+      }
+
+      if (creditsStatsRes.ok) {
+        const creditsData = await creditsStatsRes.json();
+        setCreditsStats(creditsData);
+      }
     } catch (error) {
       console.error('Failed to load admin data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleCreditsSystem = async () => {
+    setTogglingCredits(true);
+    try {
+      const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+      const res = await fetch(`${API_URL}/api/admin/settings/credits-system/toggle`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(prev => ({ ...prev, credits_system_enabled: data.credits_system_enabled }));
+      }
+    } catch (error) {
+      console.error('Failed to toggle credits system:', error);
+    } finally {
+      setTogglingCredits(false);
     }
   };
 
@@ -220,7 +261,7 @@ const AdminDashboardPage = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-card border border-border rounded-xl p-6">
+      <div className="bg-card border border-border rounded-xl p-6 mb-6">
         <h3 className="text-lg font-semibold mb-4">Acțiuni rapide</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <button
@@ -252,6 +293,69 @@ const AdminDashboardPage = () => {
             <span className="text-sm font-medium">Audit log</span>
           </button>
         </div>
+      </div>
+
+      {/* Credits System Settings */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+          <Coins className="w-5 h-5" />
+          <span>Sistem de credite</span>
+        </h3>
+        
+        <div className="flex items-center justify-between py-4 border-b border-border">
+          <div>
+            <p className="font-medium">Sistemul de credite</p>
+            <p className="text-sm text-muted-foreground">
+              {settings?.credits_system_enabled 
+                ? 'Utilizatorii trebuie să aibă credite pentru a vizualiza firme' 
+                : 'Accesul la firme este nelimitat pentru toți utilizatorii'}
+            </p>
+          </div>
+          <button
+            onClick={toggleCreditsSystem}
+            disabled={togglingCredits}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            data-testid="toggle-credits-system"
+          >
+            {settings?.credits_system_enabled ? (
+              <ToggleRight className="w-10 h-10 text-green-500" />
+            ) : (
+              <ToggleLeft className="w-10 h-10 text-muted-foreground" />
+            )}
+          </button>
+        </div>
+
+        {settings?.credits_system_enabled && creditsStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            <div className="text-center p-3 bg-secondary/50 rounded-lg">
+              <div className="text-2xl font-bold">{creditsStats.total_users_with_credits}</div>
+              <div className="text-xs text-muted-foreground">Utilizatori cu credite</div>
+            </div>
+            <div className="text-center p-3 bg-secondary/50 rounded-lg">
+              <div className="text-2xl font-bold">{creditsStats.total_credits_in_circulation}</div>
+              <div className="text-xs text-muted-foreground">Credite în circulație</div>
+            </div>
+            <div className="text-center p-3 bg-secondary/50 rounded-lg">
+              <div className="text-2xl font-bold">{creditsStats.total_company_views}</div>
+              <div className="text-xs text-muted-foreground">Vizualizări firme</div>
+            </div>
+            <div className="text-center p-3 bg-secondary/50 rounded-lg">
+              <div className="text-2xl font-bold">{creditsStats.total_credit_purchases}</div>
+              <div className="text-xs text-muted-foreground">Achiziții credite</div>
+            </div>
+          </div>
+        )}
+
+        {settings && (
+          <div className="mt-4 p-4 bg-secondary/30 rounded-lg">
+            <p className="text-sm font-medium mb-2">Configurare actuală:</p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Credite bonus la înregistrare: <strong>{settings.default_bonus_credits}</strong></li>
+              <li>• Vizualizări gratuite/zi: <strong>{settings.default_daily_free_views}</strong></li>
+              <li>• Pachete: 50 ({settings.credit_packages?.[0]?.price} RON), 200 ({settings.credit_packages?.[1]?.price} RON), 500 ({settings.credit_packages?.[2]?.price} RON)</li>
+            </ul>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
+import { CreditsProvider } from './contexts/CreditsContext';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import CompanyPage from './pages/CompanyPage';
@@ -13,12 +14,14 @@ import RegisterPage from './pages/RegisterPage';
 import AccountPage from './pages/AccountPage';
 import FavoritesPage from './pages/FavoritesPage';
 import SubscriptionPage from './pages/SubscriptionPage';
+import CreditsPage from './pages/CreditsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminAuditPage from './pages/AdminAuditPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import NoCreditsModal from './components/NoCreditsModal';
 
 function AppContent() {
   const location = useLocation();
@@ -40,6 +43,7 @@ function AppContent() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/account/favorites" element={<FavoritesPage />} />
           <Route path="/account/subscription" element={<SubscriptionPage />} />
+          <Route path="/account/credits" element={<CreditsPage />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboardPage />} />
@@ -49,6 +53,7 @@ function AppContent() {
         </Routes>
       </main>
       {!isAdminRoute && <Footer />}
+      <NoCreditsModal />
     </div>
   );
 }
@@ -57,9 +62,11 @@ function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <CreditsProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </CreditsProvider>
       </AuthProvider>
     </HelmetProvider>
   );
