@@ -1,26 +1,46 @@
 [
   {
-    "content": "Phase 1 POC: Set up Elasticsearch + Redis in Docker",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 1 POC: Create MongoDB Atlas Search index with autocomplete",
+    "content": "Phase 2: Get design guidelines from design agent",
     "status": "in_progress"
   },
   {
-    "content": "Phase 1 POC: Write poc_index.py to test Atlas Search setup",
+    "content": "Phase 2: Backend - Install dependencies",
     "status": "pending"
   },
   {
-    "content": "Phase 1 POC: Write poc_query.py to test search performance",
+    "content": "Phase 2: Backend - Core models and database setup",
     "status": "pending"
   },
   {
-    "content": "Phase 1 POC: Validate <200ms p95 latency and typo tolerance",
+    "content": "Phase 2: Backend - Search and company endpoints",
     "status": "pending"
   },
   {
-    "content": "Phase 1 POC: All user stories tested and verified",
+    "content": "Phase 2: Backend - SEO and geo endpoints",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend - Install dependencies",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend - Homepage with search",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend - Search results and filters",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend - Company profile page",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend - Category pages (judet, localitate, CAEN)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: End to End Testing using Testing Agent",
     "status": "pending"
   }
 ]
