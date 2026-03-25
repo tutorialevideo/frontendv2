@@ -290,6 +290,7 @@ const CompanyPage = () => {
               </dl>
             </div>
           </div>
+          </div>
         )}
 
         {/* Financials Tab */}
@@ -410,7 +411,6 @@ const CompanyPage = () => {
                 </div>
               )}
             </dl>
-          </div>
           </div>
         )}
 
