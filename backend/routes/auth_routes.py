@@ -46,6 +46,7 @@ async def register(user_data: UserRegister):
         email=user["email"],
         name=user["name"],
         tier=user["tier"],
+        role=user.get("role", "user"),
         created_at=user["created_at"].isoformat()
     )
     
@@ -80,6 +81,7 @@ async def login(credentials: UserLogin):
         email=user["email"],
         name=user["name"],
         tier=user.get("tier", "free"),
+        role=user.get("role", "user"),
         created_at=user["created_at"].isoformat()
     )
     
@@ -99,5 +101,6 @@ async def get_me(current_user = Depends(get_current_user)):
         email=user["email"],
         name=user["name"],
         tier=user.get("tier", "free"),
+        role=user.get("role", "user"),
         created_at=user["created_at"].isoformat()
     )

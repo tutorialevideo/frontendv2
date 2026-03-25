@@ -1,149 +1,169 @@
-# mFirme — plan.md
+# mFirme — plan.md (updated)
 
 ## 1) Objectives
-- Prove the **core workflow** works at scale: **MongoDB → Elasticsearch index → autocomplete/typo search + filters** with **<200ms** responses.
-- Deliver an SEO-first MVP: homepage search, results, company profile, county/locality/CAEN pages, sitemaps, structured data.
-- Establish a clean foundation for: accounts + subscriptions, admin overrides, and paid API.
+- Stabilize and ship the **current MVP** (FastAPI + React + MongoDB dual DB) with a reliable UX and test suite.
+- Finalize **subscriptions & premium gating** with **Stripe (sandbox first)**: checkout, status sync, and webhook handling.
+- Ensure the **Admin Dashboard** is reliable (no timeouts) and extend it with **Phase 4: manual overrides + audit**.
+- Reduce frontend noise: eliminate **React console warnings** and improve perceived performance.
+- Prepare a clean foundation for: **admin overrides → computed profile**, and later **paid API**.
 
 ---
 
 ## 2) Implementation Steps
 
-### Phase 1 — Core Search POC (isolation; do not proceed until green)
-**User stories**
-1. As a developer, I can connect to MongoDB Atlas (`justportal.firme`) and stream documents reliably.
-2. As a developer, I can run Elasticsearch in Docker and confirm health + index creation.
-3. As a developer, I can bulk-index 10k companies with correct mappings/analyzers.
-4. As a developer, I can query autocomplete with typo tolerance and get relevant results.
-5. As a developer, I can apply filters (judet/localitate/CAEN) and get correct counts.
-6. As a developer, I can measure p95 latency and confirm <200ms for typical queries.
+### Phase 1 — Core search/data workflow (DONE / superseded)
+**Status:** Completed enough to support the current MVP.
 
-**Steps**
-- Web research: ES best practices for autocomplete + typo tolerance (edge-ngram vs completion suggester; multi-field analyzers; fuzziness).
-- Docker compose: `elasticsearch` (+ `kibana` optional) + `redis`.
-- Define ES index mapping:
-  - Fields: `denumire`, `denumire_normalized`, `cui`, `cod_inregistrare`, `judet`, `localitate`, `anaf_cod_caen`, plus sortable numeric fields (`mf_cifra_afaceri`, `mf_profit_net`, `mf_numar_angajati`, `mf_an_bilant`).
-  - Multi-fields for `denumire`: `search` (standard/romanian), `autocomplete` (edge-ngram), `keyword`.
-  - Add normalizers for diacritics-folding where needed.
-- Write `poc_index.py`:
-  - Read 10k docs from MongoDB (projection of index fields only).
-  - Transform + generate `slug` (name + cui) and canonical ids.
-  - Bulk index with refresh disabled during ingest; then enable.
-- Write `poc_query.py`:
-  - Autocomplete endpoint simulation (prefix + fuzziness) + filters.
-  - Capture timings, p50/p95; validate result relevance manually.
-- Iterate until: relevance good, typo tolerance acceptable, latency budget met.
+**What exists now**
+- Production-style app is already running (no longer only a POC):
+  - FastAPI backend + React frontend
+  - Dual DB: `justportal` (readonly firms) + `mfirme_app` (users/sessions/subscriptions)
+  - Search + company profiles implemented
 
-**Exit criteria (must pass)**
-- Bulk index 10k docs completes without errors.
-- Autocomplete returns results in <200ms p95 (local dev) for common queries.
-- Filters work correctly and combine (judet+localitate+CAEN).
+**Notes**
+- The original MongoDB → Elasticsearch POC plan is no longer the immediate blocker; performance work will be handled as incremental optimization.
+
+**Exit criteria**
+- ✅ Core search and profile pages functional in the running MVP
 
 ---
 
-### Phase 2 — V1 Public MVP App (no auth yet; build around proven core)
-**User stories**
-1. As a visitor, I can search from the homepage with instant suggestions.
-2. As a visitor, I can search by CUI / registration number and jump to the right firm.
-3. As a visitor, I can filter results by judet/localitate/CAEN and keep the query in URL.
-4. As a visitor, I can open a company profile page with clean sections and fast load.
-5. As a visitor, I see masked premium fields with a clear “Upgrade” CTA.
-6. As a visitor, I can browse `/judet/[slug]`, `/localitate/[slug]`, `/caen/[code]` pages.
+### Phase 2 — V1 Public MVP App (DONE)
+**Status:** Implemented.
+
+**Delivered user stories**
+1. ✅ Visitor can search firms
+2. ✅ Visitor can open company profile
+3. ✅ Premium fields are masked for free users with upgrade prompts (where applicable)
 
 **Backend (FastAPI)**
-- Endpoints:
-  - `GET /api/search/suggest?q=` (top 10)
-  - `GET /api/search?q=&filters...&page=`
-  - `GET /api/company/{cui}` and `GET /api/company/slug/{slug}`
-  - `GET /api/geo/judete`, `GET /api/geo/localitati?judet=`
-  - `GET /api/seo/sitemap-index.xml` + chunked sitemaps
-- Implement **computed_profile** response layer:
-  - `raw_data` from Mongo + later `manual_overrides`; for now just raw + masking rules.
-  - Masking helpers for public tier (phone/admin etc.).
-- Caching:
-  - Redis cache for popular queries + category pages.
-  - Basic rate limiting (public) to protect ES.
+- ✅ Core endpoints for search and company profile
+- ✅ Masking rules applied at response layer
 
 **Frontend (React)**
-- Pages:
-  - Home (hero search)
-  - Results (filters sidebar, pagination, empty/loading states)
-  - Company profile (tabs/sections; breadcrumbs)
-  - County/Locality/CAEN listing pages
-- SEO:
-  - Per-route meta tags (title/description/canonical), JSON-LD (Organization/LocalBusiness + Breadcrumb).
-  - Generate sitemaps via backend and link in `robots.txt`.
+- ✅ Search and company profile pages
+- ✅ User flows integrated with auth where needed
 
 **Phase exit testing**
-- One end-to-end pass: search → results → filters → profile → category pages.
-- Performance spot-check: repeated searches under load (basic concurrency).
+- ✅ Manual end-to-end flow exists (Search → Profile)
+- ⏳ Add/strengthen automated smoke tests as part of Phase 3/4 hardening
 
 ---
 
-### Phase 3 — Accounts + Subscriptions + Premium gating
-**User stories**
-1. As a visitor, I can register/login and keep my session secure.
-2. As a free user, I can save favorites and view them later.
-3. As a free user, I see premium fields locked with upgrade prompts.
-4. As a premium user, I can see unmasked fields and export results.
-5. As a premium user, I get higher rate limits and faster cached responses.
+### Phase 3 — Accounts + Subscriptions + Premium gating (IN PROGRESS)
+**Status:** Auth & gating implemented; Stripe needs completion/hardening.
 
-**Steps**
-- Auth: email/password + JWT (access/refresh) + password reset.
-- Plans/entitlements model in Mongo; middleware for field-level gating.
-- Payments POC first (Stripe) + webhook handling; then wire subscriptions.
-- Rate limiting by tier (Redis) for web + search endpoints.
+**User stories**
+1. ✅ Register/login and secure session (JWT)
+2. ✅ Favorites and user dashboard
+3. ✅ Premium data masking for non-paying tiers
+4. ⏳ Paid upgrade unlock via Stripe (sandbox)
+
+**What is already implemented**
+- ✅ JWT auth flow
+- ✅ Tier concept (`free`/`plus`/`premium`) and UI gating/masking
+- ✅ Subscription endpoints exist (`/api/subscriptions/*`), with plan definitions
+- ⚠️ Stripe flow is partial and requires sandbox configuration + verification
+
+**Immediate steps (P0)**
+1. **Admin Dashboard reliability fix (P0)**
+   - Reproduce the automated test timeout.
+   - Ensure the “Tranzacții” tab is discoverable and stable:
+     - Add stable `data-testid` attributes for tab buttons and key table elements.
+     - Ensure loading state completes even if one endpoint fails (graceful degradation + error UI).
+   - Confirm `/api/admin/stats`, `/api/admin/users`, `/api/admin/transactions` are fast and return expected shapes.
+
+2. **Stripe Sandbox completion (P0)**
+   - Configure backend env:
+     - `STRIPE_API_KEY` (test secret key)
+     - (If using signature verification) `STRIPE_WEBHOOK_SECRET`
+   - Make checkout fully deterministic:
+     - Confirm `success_url`/`cancel_url` work across environments.
+     - Ensure transaction document is created and updated correctly.
+   - Webhook hardening:
+     - Verify signature (if supported by integration library).
+     - On `checkout.session.completed`, mark transaction paid and set subscription active (avoid relying only on polling `/status/{session_id}`).
+   - Add a clear reconciliation path:
+     - If webhook missed, `/status/{session_id}` can still upgrade the user.
+
+3. **React warnings cleanup (P2)**
+   - Identify and remove hydration/deprecation warnings affecting SearchPage/CompanyPage.
+   - Ensure loading states and conditional rendering do not cause mismatched markup.
 
 **Phase exit testing**
-- E2E flows: register/login/reset, upgrade, premium unlock, export, limits.
+- E2E (manual + basic automation):
+  - register/login → open pricing → checkout (sandbox) → return success → premium fields unmasked
+  - cancel flow leaves user tier unchanged
+  - webhook (or polling fallback) updates DB reliably
 
 ---
 
-### Phase 4 — Admin panel + override system + audit
+### Phase 4 — Admin panel + override system + audit (NEXT)
+**Status:** Admin Dashboard exists; overrides system not yet implemented.
+
 **User stories**
-1. As an admin, I can view raw vs overrides vs computed profile.
-2. As an admin, I can edit fields without touching raw_data.
-3. As an admin, I can mark fields public/premium/hidden.
-4. As an admin, I can verify a company and add website/email/description.
-5. As an admin, I can see audit history of changes and sync events.
+1. As an admin, I can view **raw vs computed vs overrides** for a company.
+2. As an admin, I can **edit fields non-destructively** (overrides stored separately from raw data).
+3. As an admin, I can mark fields **public/premium/hidden**.
+4. As an admin, I can **verify** a company and add curated fields (website/email/description).
+5. As an admin, I can see an **audit history** of changes.
 
 **Steps**
-- Data model: add `manual_overrides`, `field_visibility`, `verified`, `audit_log`.
-- Admin UI: company search, edit form, diff viewer, user management basics.
-- Reindex pipeline: when overrides change → update ES doc.
+1. **Data model changes (mfirme_app)**
+   - Add collections (or embed documents) for:
+     - `company_overrides` (by firm identifier e.g., CUI)
+     - `field_visibility`
+     - `audit_log`
+   - Define a canonical company identifier mapping between `justportal` firms and app overrides.
+
+2. **Computed profile pipeline**
+   - Backend merges:
+     - `raw_data` (readonly firm doc)
+     - `manual_overrides` (admin)
+     - `visibility` (public/premium/hidden)
+   - Ensure masking rules apply after merge, based on user tier.
+
+3. **Admin UI**
+   - Add Admin company search + open company editor.
+   - Implement diff viewer (raw vs override) and save flow.
+   - Audit log viewer.
+
+4. **Operational safeguards**
+   - Role-based access checks (admin-only routes).
+   - Validation and schema normalization for overrides.
 
 **Phase exit testing**
-- Admin edit → computed changes reflected → ES updated → public page shows correct gating.
+- Admin edits a field → computed profile changes → public page reflects change with correct tier gating.
+- Audit log shows who/what/when.
 
 ---
 
-### Phase 5 — Private API + API keys + monetization
+### Phase 5 — Private API + API keys + monetization (LATER)
+**Status:** Planned.
+
 **User stories**
-1. As a customer, I can generate/revoke API keys.
-2. As an API client, I can search and fetch company details by CUI.
-3. As an API client, I get rate-limited per plan with clear errors.
-4. As an admin, I can view/revoke keys and set custom limits.
-5. As a customer, I can view usage stats and billing.
+1. Customers can generate/revoke API keys.
+2. API clients can search and fetch company details.
+3. Tiered rate limits and field entitlements.
 
 **Steps**
-- API key issuance + hashed storage + scopes.
-- Dedicated `/api/v1` routes; tiered fields identical to web entitlements.
-- Usage logs + per-key rate limits (Redis) + basic analytics.
+- API keys (hashed) + scopes.
+- `/api/v1` routes mirroring web entitlements.
+- Usage logs + rate limiting.
 
 ---
 
 ## 3) Next Actions (immediate)
-1. Create `docker-compose.yml` for Elasticsearch + Redis (dev).
-2. Implement ES index mapping + analyzers for autocomplete + fuzziness.
-3. Write and run `poc_index.py` to ingest 10k docs from `justportal.firme`.
-4. Write and run `poc_query.py` to validate relevance + <200ms p95.
-5. Only after POC passes: start Phase 2 app skeleton (FastAPI + React) wired to ES.
+1. **P0:** Reproduce and fix Admin Dashboard test timeout; add `data-testid` to tabs and key admin elements.
+2. **P0:** Configure Stripe sandbox (`STRIPE_API_KEY`, webhook secret if needed) and complete checkout + webhook reconciliation.
+3. **P2:** Remove React console warnings in SearchPage/CompanyPage.
+4. **NEXT:** Start Phase 4 implementation: overrides data model → computed profile merge → admin editor + audit.
 
 ---
 
 ## 4) Success Criteria
-- **POC:** stable indexing + relevant autocomplete + typo tolerance + filters; p95 <200ms on dev.
-- **V1 MVP:** fast public UX, clean design, correct masking, working SEO metas + JSON-LD + sitemaps.
-- **Subscriptions:** premium unlock + reliable billing state + tiered rate limits.
-- **Admin overrides:** non-destructive edits + audit + ES reindex correctness.
-- **API:** secure keys, scoped access, predictable limits, and usage visibility.
+- **MVP stability:** No Admin Dashboard timeouts; reliable loading states; key flows covered by smoke tests.
+- **Subscriptions:** Sandbox payments reliably upgrade tier; webhook/polling reconciliation prevents desync; transactions recorded correctly.
+- **Frontend quality:** No critical console warnings; consistent rendering and predictable navigation.
+- **Admin overrides:** Non-destructive edits with audit trail; computed profile correctly merges raw + overrides + visibility; public gating remains correct.
+- **Foundation for monetization:** Clear entitlement model reusable for future paid API.

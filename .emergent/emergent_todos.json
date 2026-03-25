@@ -1,10 +1,22 @@
 [
   {
-    "content": "Phase 3: End to End Testing",
+    "content": "Setup Stripe Sandbox - adaugă STRIPE_API_KEY (test key) în backend/.env",
     "status": "completed"
   },
   {
-    "content": "Phase 3: All features implemented and tested",
-    "status": "completed"
+    "content": "Testează Stripe checkout flow complet (create session → redirect → return → verify status)",
+    "status": "in_progress"
+  },
+  {
+    "content": "Verifică și îmbunătățește webhook handling pentru Stripe (signature verification + reconciliation)",
+    "status": "pending"
+  },
+  {
+    "content": "Identifică și elimină React warnings din SearchPage.js și CompanyPage.js (hydration errors, invalid nesting)",
+    "status": "pending"
+  },
+  {
+    "content": "Testează end-to-end: Register → Login → View Profile → Upgrade to Premium → Verify unlocked features",
+    "status": "pending"
   }
 ]

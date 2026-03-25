@@ -96,8 +96,8 @@ const AdminPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-card border border-border rounded-xl p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-testid="admin-stats-cards">
+          <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-stat-total-users">
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -108,7 +108,7 @@ const AdminPage = () => {
             <div className="text-xs text-green-600 mt-2">+{stats.users.new_last_30_days} în 30 zile</div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-stat-premium-users">
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-green-600" />
@@ -119,7 +119,7 @@ const AdminPage = () => {
             <div className="text-xs text-muted-foreground mt-2">{stats.users.plus} Plus</div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-stat-revenue">
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-amber-600" />
@@ -130,7 +130,7 @@ const AdminPage = () => {
             <div className="text-xs text-muted-foreground mt-2">{stats.revenue.paid_transactions} plăți</div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-stat-favorites">
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
                 <Heart className="w-5 h-5 text-red-600" />
@@ -143,12 +143,13 @@ const AdminPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-border mb-6">
+        <div className="border-b border-border mb-6" data-testid="admin-tabs-nav">
           <nav className="flex space-x-8">
             {['overview', 'users', 'transactions'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
+                data-testid={`admin-tab-${tab}`}
                 className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${
                   activeTab === tab
                     ? 'border-primary text-foreground'
@@ -165,7 +166,7 @@ const AdminPage = () => {
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
+          <div className="space-y-6" data-testid="admin-overview-content">
             <div className="bg-card border border-border rounded-xl p-6">
               <h3 className="text-lg font-semibold mb-4">Statistici platformă</h3>
               <div className="grid md:grid-cols-2 gap-6">
@@ -206,7 +207,7 @@ const AdminPage = () => {
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="admin-users-content">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-secondary/30 border-b border-border">
@@ -252,7 +253,7 @@ const AdminPage = () => {
 
         {/* Transactions Tab */}
         {activeTab === 'transactions' && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="admin-transactions-content">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-secondary/30 border-b border-border">

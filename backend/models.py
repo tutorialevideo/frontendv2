@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     tier: str = "free"
+    role: Optional[str] = "user"
     created_at: str
 
 class TokenResponse(BaseModel):
