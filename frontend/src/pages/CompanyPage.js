@@ -53,10 +53,10 @@ const CompanyPage = () => {
   return (
     <>
       <Helmet>
-        <title>{company.denumire} - CUI {company.cui} | mFirme</title>
+        <title>{company?.denumire ? `${company.denumire} - CUI ${company.cui} | mFirme` : 'Companie | mFirme'}</title>
         <meta 
           name="description" 
-          content={`Informații complete despre ${company.denumire}, CUI ${company.cui}, ${company.localitate}, ${company.judet}. Date financiare, juridice și de contact.`}
+          content={company ? `Informații complete despre ${company.denumire}, CUI ${company.cui}, ${company.localitate}, ${company.judet}. Date financiare, juridice și de contact.` : 'Informații complete despre companie'}
         />
       </Helmet>
 
@@ -64,10 +64,14 @@ const CompanyPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <nav className="text-xs text-muted-foreground mb-4">
             <Link to="/" className="hover:text-foreground">Acasă</Link>
-            <span className="mx-2">/</span>
-            <Link to={`/judet/${company.judet}`} className="hover:text-foreground">{company.judet}</Link>
-            <span className="mx-2">/</span>
-            <span className="text-foreground">{company.denumire}</span>
+            {company && (
+              <>
+                <span className="mx-2">/</span>
+                <Link to={`/judet/${company.judet}`} className="hover:text-foreground">{company.judet}</Link>
+                <span className="mx-2">/</span>
+                <span className="text-foreground">{company.denumire}</span>
+              </>
+            )}
           </nav>
 
           <div className="flex items-start justify-between">
