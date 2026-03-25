@@ -6,6 +6,7 @@ const FinancialChart = ({ cui }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeMetric, setActiveMetric] = useState('cifra_afaceri');
+  const [dataSource, setDataSource] = useState('approximated'); // 'real' or 'approximated'
 
   useEffect(() => {
     loadFinancialData();
@@ -19,6 +20,7 @@ const FinancialChart = ({ cui }) => {
       if (res.ok) {
         const result = await res.json();
         setData(result.data || []);
+        setDataSource(result.source || 'approximated');
       }
     } catch (error) {
       console.error('Failed to load financial data:', error);
@@ -196,14 +198,22 @@ const FinancialChart = ({ cui }) => {
         )}
       </div>
 
-      {/* Data Source Disclaimer */}
-      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
-        <p className="text-xs text-amber-800 dark:text-amber-200">
-          ℹ️ <strong>Notă:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finanțelor). 
-          Valorile pentru anii anteriori sunt aproximate bazate pe ultimul an disponibil. 
-          Pentru date istorice complete, te rugăm să consulți direct rapoartele oficiale.
-        </p>
-      </div>
+      {/* Data Source Info */}
+      {dataSource === 'real' ? (
+        <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
+          <p className="text-xs text-green-800 dark:text-green-200">
+            ✓ <strong>Date reale</strong> din bilanțurile oficiale publicate la Ministerul Finanțelor pentru toți anii afișați.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            ℹ️ <strong>Notă:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finanțelor). 
+            Valorile pentru anii anteriori sunt aproximate bazate pe ultimul an disponibil. 
+            Pentru date istorice complete, te rugăm să consulți direct rapoartele oficiale.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

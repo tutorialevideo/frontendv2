@@ -209,7 +209,7 @@ async def get_company_by_slug(slug: str, current_user = Depends(get_current_user
 
 @app.get("/api/company/{cui}/financials")
 async def get_company_financials(cui: str):
-    """Get multi-year financial data for a company"""
+    """Get multi-year financial data for a company from real bilanturi collection"""
     db = get_companies_db()
     normalized_cui = normalize_cui(cui)
     company = await db.firme.find_one({"cui": normalized_cui})
@@ -217,38 +217,59 @@ async def get_company_financials(cui: str):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    # Get available years
-    ani_disponibili = company.get('mf_ani_disponibili', '')
-    if not ani_disponibili:
-        return {"years": [], "data": []}
+    # Get firma numeric ID to find bilanturi
+    firma_numeric_id = company.get('id')
     
-    years = sorted([int(y.strip()) for y in ani_disponibili.split(',')])
+    if not firma_numeric_id:
+        # Fallback to empty data if no ID
+        return {"years": [], "data": [], "note": "No financial data available"}
     
-    # Current year data
-    current_year = company.get('mf_an_bilant', years[-1])
-    current_data = {
-        'year': current_year,
-        'cifra_afaceri': company.get('mf_cifra_afaceri'),
-        'profit_net': company.get('mf_profit_net'),
-        'numar_angajati': company.get('mf_numar_angajati'),
-    }
+    # Get real bilanturi data from bilanturi collection
+    bilanturi_cursor = db.bilanturi.find({"firma_id": firma_numeric_id}).sort("an", 1)
+    bilanturi = await bilanturi_cursor.to_list(length=100)
     
-    # Build historical data (approximate for demo - replace with real data later)
+    if not bilanturi:
+        return {"years": [], "data": [], "note": "No bilanturi found"}
+    
+    # Build data array from real bilanturi
     data = []
-    for year in years:
-        if year == current_year:
-            data.append(current_data)
-        else:
-            # Approximate: scale down proportionally to year distance
-            factor = 0.65 + (0.35 * (year - min(years)) / (max(years) - min(years)))
-            data.append({
-                'year': year,
-                'cifra_afaceri': int(current_data['cifra_afaceri'] * factor) if current_data['cifra_afaceri'] else None,
-                'profit_net': int(current_data['profit_net'] * factor * 0.9) if current_data['profit_net'] else None,
-                'numar_angajati': max(1, int(current_data['numar_angajati'] * factor)) if current_data['numar_angajati'] else None,
-            })
+    years = []
     
-    return {"years": years, "data": data}
+    for bilant in bilanturi:
+        an = bilant.get('an')
+        
+        # Skip invalid years
+        if not an or str(an).startswith('WEB_'):
+            continue
+        
+        try:
+            year_int = int(an) if isinstance(an, str) else an
+        except (ValueError, TypeError):
+            continue
+        
+        years.append(year_int)
+        
+        # Extract financial data - use real values from bilanturi
+        # Use venituri_totale as fallback for cifra_afaceri if not available
+        cifra_afaceri = bilant.get('cifra_afaceri') or bilant.get('venituri_totale')
+        
+        data.append({
+            'year': year_int,
+            'cifra_afaceri': cifra_afaceri,
+            'profit_net': bilant.get('profit_net'),
+            'numar_angajati': bilant.get('numar_angajati'),
+            'venituri_totale': bilant.get('venituri_totale'),
+            'cheltuieli_totale': bilant.get('cheltuieli_totale'),
+            'capitaluri_proprii': bilant.get('capitaluri_proprii'),
+            'datorii': bilant.get('datorii'),
+        })
+    
+    return {
+        "years": years,
+        "data": data,
+        "source": "real",  # Indicate these are real data
+        "note": "Real financial data from Ministerul Finanțelor bilanțuri"
+    }
 
 @app.get("/api/geo/judete")
 async def get_judete():
