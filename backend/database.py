@@ -32,14 +32,14 @@ async def connect_to_databases():
     global LOCAL_DB_AVAILABLE
     global companies_client, companies_db
     
-    # Connect to cloud companies database (read-only source)
-    mongo_url = os.getenv("MONGO_URL")
-    if mongo_url:
+    # Connect to cloud companies database (read-only source for firme)
+    cloud_mongo_url = os.getenv("CLOUD_MONGO_URL")
+    if cloud_mongo_url:
         try:
-            cloud_companies_client = AsyncIOMotorClient(mongo_url)
+            cloud_companies_client = AsyncIOMotorClient(cloud_mongo_url)
             cloud_companies_db = cloud_companies_client["justportal"]
             await cloud_companies_db.command('ping')
-            print("✓ Connected to MongoDB Cloud (justportal)")
+            print("✓ Connected to MongoDB Cloud (justportal - firme source)")
         except Exception as e:
             print(f"✗ Failed to connect to cloud companies DB: {e}")
     
@@ -50,9 +50,9 @@ async def connect_to_databases():
             app_client = AsyncIOMotorClient(app_mongo_url)
             app_db = app_client["mfirme_app"]
             await app_db.command('ping')
-            print("✓ Connected to MongoDB Cloud (mfirme_app)")
+            print("✓ Connected to MongoDB App (mfirme_app)")
         except Exception as e:
-            print(f"✗ Failed to connect to cloud app DB: {e}")
+            print(f"✗ Failed to connect to app DB: {e}")
     
     # Connect to local MongoDB (for fast reads)
     local_mongo_url = os.getenv("MONGO_LOCAL_URL")
