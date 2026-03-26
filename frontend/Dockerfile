@@ -1,4 +1,4 @@
-# Frontend Dockerfile - Multi-stage build
+# Frontend Dockerfile - Multi-stage build for Production
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -11,6 +11,9 @@ RUN yarn install
 
 # Copy source code
 COPY . .
+
+# Set production env - empty BACKEND_URL means use relative /api paths
+ENV REACT_APP_BACKEND_URL=""
 
 # Build the app
 RUN yarn build

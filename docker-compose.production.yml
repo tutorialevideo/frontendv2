@@ -1,14 +1,13 @@
 version: '3.8'
 
 services:
-  # MongoDB Local - pentru date firme (read-heavy)
+  # MongoDB Local - pentru date firme (read-heavy) - INTERNAL ONLY
   mongodb-local:
     image: mongo:7.0
     container_name: mfirme_mongodb_local
     environment:
       - MONGO_INITDB_DATABASE=mfirme_local
-    ports:
-      - "27017:27017"
+    # ports removed - internal only
     volumes:
       - mongodb_local_data:/data/db
     networks:
@@ -25,7 +24,7 @@ services:
       --wiredTigerCacheSizeGB 32
       --setParameter diagnosticDataCollectionEnabled=false
 
-  # Sync Service - sincronizează MongoDB Atlas → Local
+  # Sync Service - sincronizează MongoDB Atlas → Local - INTERNAL ONLY
   sync-service:
     build:
       context: ./sync-service
@@ -46,8 +45,7 @@ services:
     restart: unless-stopped
     volumes:
       - sync_logs:/app/logs
-    ports:
-      - "8002:8002"
+    # port 8002 internal only - accessed via backend
 
   # Backend FastAPI
   backend:
@@ -61,8 +59,8 @@ services:
       - MONGO_LOCAL_URL=mongodb://mongodb-local:27017/mfirme_local
       - USE_LOCAL_DB=true
       - SYNC_SERVICE_URL=http://sync-service:8002
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     depends_on:
       mongodb-local:
         condition: service_healthy
@@ -72,28 +70,25 @@ services:
       - mfirme_network
     restart: unless-stopped
 
-  # Frontend React (via Nginx)
+  # Frontend React (via Nginx) - Production on port 80
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - REACT_APP_BACKEND_URL=
     container_name: mfirme_frontend
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
       - backend
     networks:
       - mfirme_network
     restart: unless-stopped
 
-  # Redis pentru caching (opțional)
+  # Redis pentru caching - INTERNAL ONLY
   redis:
     image: redis:7-alpine
     container_name: mfirme_redis
-    ports:
-      - "6379:6379"
+    # ports removed - internal only
     volumes:
       - redis_data:/data
     networks:
