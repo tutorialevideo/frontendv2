@@ -185,6 +185,27 @@ MongoDB:
 - `POST /api/admin/sync/switch-mode` - Switch local/cloud mode
 - `GET /api/admin/sync/local-stats` - Local DB statistics
 
+### API Keys Management (NEW - Faza 6)
+- `GET /api/api-keys/plans` - Get API plans (Basic, Pro, Enterprise)
+- `GET /api/api-keys/my-keys` - Get user's API keys
+- `POST /api/api-keys/create` - Create new API key
+- `PUT /api/api-keys/{id}` - Update key (name, active status)
+- `DELETE /api/api-keys/{id}` - Revoke API key
+- `POST /api/api-keys/{id}/regenerate` - Regenerate API key
+- `GET /api/api-keys/{id}/usage` - Get key usage stats
+- `GET /api/api-keys/admin/all` - Admin: Get all keys
+- `PUT /api/api-keys/admin/{id}/toggle` - Admin: Toggle key status
+
+### Public API v1 (NEW - Faza 6)
+- `GET /api/v1/health` - API health check (no auth)
+- `GET /api/v1/company/{cui}` - Get company by CUI
+- `GET /api/v1/company/{cui}/financials` - Get financial data (Pro+)
+- `GET /api/v1/search` - Search companies
+- `POST /api/v1/companies/bulk` - Bulk company lookup (Pro+)
+- `GET /api/v1/geo/judete` - Get counties (Enterprise)
+- `GET /api/v1/geo/localitati` - Get localities (Enterprise)
+- `GET /api/v1/caen/{code}` - Get companies by CAEN (Enterprise)
+
 ## Prioritized Backlog
 
 ### P0 (Critical) - DONE
@@ -193,18 +214,20 @@ MongoDB:
 - ✅ CAEN codes integration with descriptions
 - ✅ Credits system with daily free views
 - ✅ Admin toggle for credits system
+- ✅ API key management for premium users (Faza 6)
 
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently simulated)
 - [ ] Complete Stripe payment flow verification for subscriptions
-- [ ] API key management for premium users
 - [ ] Admin subscription management
 - [ ] Test hybrid DB in production environment with real data
+- [ ] SEO templates pentru firme și categorii (index/noindex control)
 
 ### P2 (Medium Priority)
 - [ ] Advanced search engine migration (Elasticsearch)
 - [ ] Bulk SEO metadata editing
 - [ ] Export functionality
+- [ ] AI-generated SEO text pentru firme (template-uri inteligente)
 
 ### P3 (Future/Nice to Have)
 - [ ] Company comparison tool
