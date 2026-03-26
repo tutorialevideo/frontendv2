@@ -9,8 +9,9 @@ COPY craco.config.js ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
-# Install dependencies with npm (more reliable in Docker)
-RUN npm install --legacy-peer-deps --loglevel=error
+# Install dependencies with explicit ajv fix
+RUN npm install --legacy-peer-deps --loglevel=error && \
+    npm install ajv@8 ajv-keywords@5 --save --legacy-peer-deps
 
 # Copy source code
 COPY public ./public
