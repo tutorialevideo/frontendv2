@@ -346,6 +346,10 @@ async def admin_get_all_api_keys(current_user = Depends(get_current_user)):
     result = []
     for key in keys:
         plan = API_PLANS.get(key.get("plan_id"), API_PLANS["basic"])
+        # Use custom limits if set, otherwise use plan defaults
+        effective_daily = key.get("custom_requests_per_day") or plan["requests_per_day"]
+        effective_monthly = key.get("custom_requests_per_month") or plan["requests_per_month"]
+        
         result.append({
             "id": str(key["_id"]),
             "user_id": str(key.get("user_id")),
@@ -359,6 +363,11 @@ async def admin_get_all_api_keys(current_user = Depends(get_current_user)):
             "requests_today": key.get("requests_today", 0),
             "requests_this_month": key.get("requests_this_month", 0),
             "requests_total": key.get("requests_total", 0),
+            "requests_per_day": effective_daily,
+            "requests_per_month": effective_monthly,
+            "custom_requests_per_day": key.get("custom_requests_per_day"),
+            "custom_requests_per_month": key.get("custom_requests_per_month"),
+            "has_custom_limits": key.get("custom_requests_per_day") is not None or key.get("custom_requests_per_month") is not None,
             "last_used_at": key.get("last_used_at").isoformat() if key.get("last_used_at") else None,
             "created_at": key.get("created_at").isoformat() if key.get("created_at") else None
         })
@@ -433,3 +442,175 @@ async def admin_adjust_limits(
     )
     
     return {"success": True, "message": "Limits adjusted"}
+
+
+class AdminCreateKeyRequest(BaseModel):
+    user_email: str
+    name: str
+    plan_id: str
+    custom_requests_per_day: Optional[int] = None
+    custom_requests_per_month: Optional[int] = None
+
+
+class AdminUpdateKeyRequest(BaseModel):
+    name: Optional[str] = None
+    plan_id: Optional[str] = None
+    custom_requests_per_day: Optional[int] = None
+    custom_requests_per_month: Optional[int] = None
+    active: Optional[bool] = None
+
+
+@router.post("/admin/create")
+async def admin_create_api_key(request: AdminCreateKeyRequest, current_user = Depends(get_current_user)):
+    """Admin: Create API key for any user"""
+    db = get_app_db()
+    
+    # Check admin role
+    admin_user = await db.users.find_one({"_id": ObjectId(current_user["user_id"])})
+    if not admin_user or admin_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Find target user
+    target_user = await db.users.find_one({"email": request.user_email})
+    if not target_user:
+        raise HTTPException(status_code=404, detail=f"User with email {request.user_email} not found")
+    
+    # Validate plan
+    if request.plan_id not in API_PLANS:
+        raise HTTPException(status_code=400, detail="Invalid API plan")
+    
+    plan = API_PLANS[request.plan_id]
+    
+    # Generate key
+    raw_key = generate_api_key()
+    key_hash = hash_api_key(raw_key)
+    key_preview = raw_key[:12] + "..." + raw_key[-4:]
+    
+    # Create key record
+    now = datetime.now(timezone.utc)
+    key_doc = {
+        "user_id": target_user["_id"],
+        "user_email": target_user["email"],
+        "name": request.name,
+        "key_hash": key_hash,
+        "key_preview": key_preview,
+        "plan_id": request.plan_id,
+        "active": True,
+        "requests_today": 0,
+        "requests_this_month": 0,
+        "requests_total": 0,
+        "last_reset_day": now.strftime("%Y-%m-%d"),
+        "last_reset_month": now.strftime("%Y-%m"),
+        "created_at": now,
+        "created_by_admin": current_user["email"],
+        "last_used_at": None,
+        "expires_at": None
+    }
+    
+    # Add custom limits if provided
+    if request.custom_requests_per_day is not None:
+        key_doc["custom_requests_per_day"] = request.custom_requests_per_day
+    if request.custom_requests_per_month is not None:
+        key_doc["custom_requests_per_month"] = request.custom_requests_per_month
+    
+    result = await db.api_keys.insert_one(key_doc)
+    
+    return {
+        "success": True,
+        "key_id": str(result.inserted_id),
+        "api_key": raw_key,
+        "key_preview": key_preview,
+        "user_email": target_user["email"],
+        "plan": plan,
+        "custom_limits": {
+            "requests_per_day": request.custom_requests_per_day,
+            "requests_per_month": request.custom_requests_per_month
+        },
+        "message": "Cheie API creată pentru utilizator!"
+    }
+
+
+@router.put("/admin/{key_id}/update")
+async def admin_update_api_key(key_id: str, request: AdminUpdateKeyRequest, current_user = Depends(get_current_user)):
+    """Admin: Update any field of an API key"""
+    db = get_app_db()
+    
+    # Check admin role
+    admin_user = await db.users.find_one({"_id": ObjectId(current_user["user_id"])})
+    if not admin_user or admin_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    key = await db.api_keys.find_one({"_id": ObjectId(key_id)})
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    # Build update
+    update = {"updated_at": datetime.now(timezone.utc)}
+    
+    if request.name is not None:
+        update["name"] = request.name
+    
+    if request.plan_id is not None:
+        if request.plan_id not in API_PLANS:
+            raise HTTPException(status_code=400, detail="Invalid API plan")
+        update["plan_id"] = request.plan_id
+    
+    if request.custom_requests_per_day is not None:
+        update["custom_requests_per_day"] = request.custom_requests_per_day
+    
+    if request.custom_requests_per_month is not None:
+        update["custom_requests_per_month"] = request.custom_requests_per_month
+    
+    if request.active is not None:
+        update["active"] = request.active
+    
+    await db.api_keys.update_one(
+        {"_id": ObjectId(key_id)},
+        {"$set": update}
+    )
+    
+    # Get updated key
+    updated_key = await db.api_keys.find_one({"_id": ObjectId(key_id)})
+    plan = API_PLANS.get(updated_key.get("plan_id"), API_PLANS["basic"])
+    
+    return {
+        "success": True,
+        "key": {
+            "id": str(updated_key["_id"]),
+            "name": updated_key.get("name"),
+            "plan_id": updated_key.get("plan_id"),
+            "plan_name": plan["name"],
+            "custom_requests_per_day": updated_key.get("custom_requests_per_day"),
+            "custom_requests_per_month": updated_key.get("custom_requests_per_month"),
+            "active": updated_key.get("active", True)
+        },
+        "message": "Cheie API actualizată!"
+    }
+
+
+@router.get("/admin/users")
+async def admin_get_users_for_keys(current_user = Depends(get_current_user)):
+    """Admin: Get list of users for key creation dropdown"""
+    db = get_app_db()
+    
+    # Check admin role
+    admin_user = await db.users.find_one({"_id": ObjectId(current_user["user_id"])})
+    if not admin_user or admin_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get all users
+    users = await db.users.find(
+        {},
+        {"_id": 1, "email": 1, "name": 1}
+    ).sort("email", 1).to_list(length=1000)
+    
+    return {
+        "users": [
+            {
+                "id": str(u["_id"]),
+                "email": u.get("email"),
+                "name": u.get("name")
+            }
+            for u in users
+        ]
+    }
