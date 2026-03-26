@@ -1,3 +1,8 @@
+"""
+Database Module - Hybrid Architecture
+Supports both local MongoDB (fast reads) and cloud MongoDB (fallback + users)
+"""
+
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -7,10 +12,8 @@ logger = logging.getLogger(__name__)
 # Cloud databases (MongoDB Atlas)
 cloud_companies_client = None
 cloud_companies_db = None
-
-# App database (read-write for users, subscriptions, etc.)
-app_client = None
-app_db = None
+cloud_app_client = None
+cloud_app_db = None
 
 # Local database (MongoDB Local - for fast reads)
 local_client = None
@@ -20,17 +23,13 @@ local_db = None
 USE_LOCAL_DB = os.getenv("USE_LOCAL_DB", "false").lower() == "true"
 LOCAL_DB_AVAILABLE = False
 
-# Backwards compatibility aliases
-companies_client = None
-companies_db = None
-
 
 async def connect_to_databases():
+    """Connect to all database instances"""
     global cloud_companies_client, cloud_companies_db
-    global app_client, app_db
+    global cloud_app_client, cloud_app_db
     global local_client, local_db
     global LOCAL_DB_AVAILABLE
-    global companies_client, companies_db
     
     # Connect to cloud companies database (read-only source)
     mongo_url = os.getenv("MONGO_URL")
@@ -43,13 +42,13 @@ async def connect_to_databases():
         except Exception as e:
             print(f"✗ Failed to connect to cloud companies DB: {e}")
     
-    # Connect to app database (users, settings, etc.)
+    # Connect to cloud app database (users, settings, etc.)
     app_mongo_url = os.getenv("APP_MONGO_URL")
     if app_mongo_url:
         try:
-            app_client = AsyncIOMotorClient(app_mongo_url)
-            app_db = app_client["mfirme_app"]
-            await app_db.command('ping')
+            cloud_app_client = AsyncIOMotorClient(app_mongo_url)
+            cloud_app_db = cloud_app_client["mfirme_app"]
+            await cloud_app_db.command('ping')
             print("✓ Connected to MongoDB Cloud (mfirme_app)")
         except Exception as e:
             print(f"✗ Failed to connect to cloud app DB: {e}")
@@ -75,21 +74,17 @@ async def connect_to_databases():
             print(f"⚠ Local MongoDB not available, using cloud: {e}")
             LOCAL_DB_AVAILABLE = False
     
-    # Set backwards compatibility aliases
-    companies_client = cloud_companies_client
-    companies_db = get_companies_db()
-    
-    mode = 'LOCAL + Cloud fallback' if LOCAL_DB_AVAILABLE else 'Cloud only'
-    print(f"Database mode: {mode}")
+    print(f"Database mode: {'LOCAL + Cloud fallback' if LOCAL_DB_AVAILABLE else 'Cloud only'}")
 
 
 async def close_database_connections():
-    global cloud_companies_client, app_client, local_client
+    """Close all database connections"""
+    global cloud_companies_client, cloud_app_client, local_client
     
     if cloud_companies_client:
         cloud_companies_client.close()
-    if app_client:
-        app_client.close()
+    if cloud_app_client:
+        cloud_app_client.close()
     if local_client:
         local_client.close()
     
@@ -116,7 +111,7 @@ def get_app_db():
     Get the app database (users, settings, etc.)
     Always returns cloud - user data must stay in sync
     """
-    return app_db
+    return cloud_app_db
 
 
 def get_local_db():

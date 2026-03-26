@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # MongoDB Local - pentru date firme (read-heavy)
+  mongodb-local:
+    image: mongo:7.0
+    container_name: mfirme_mongodb_local
+    environment:
+      - MONGO_INITDB_DATABASE=mfirme_local
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_local_data:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - mfirme_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Optimize for read-heavy workload with 64GB RAM
+    command: >
+      mongod 
+      --wiredTigerCacheSizeGB 32
+      --setParameter diagnosticDataCollectionEnabled=false
+
+  # Sync Service - sincronizează MongoDB Atlas → Local
+  sync-service:
+    build:
+      context: ./sync-service
+      dockerfile: Dockerfile
+    container_name: mfirme_sync_service
+    environment:
+      - MONGO_CLOUD_URL=${MONGO_URL}
+      - MONGO_LOCAL_URL=mongodb://mongodb-local:27017/mfirme_local
+      - SYNC_COLLECTIONS=firme,bilanturi,caen_codes,postal_codes,localities
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      mongodb-local:
+        condition: service_healthy
+    networks:
+      - mfirme_network
+    restart: unless-stopped
+    volumes:
+      - sync_logs:/app/logs
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mfirme_backend
+    environment:
+      - MONGO_URL=${MONGO_URL}
+      - APP_MONGO_URL=${APP_MONGO_URL}
+      - MONGO_LOCAL_URL=mongodb://mongodb-local:27017/mfirme_local
+      - USE_LOCAL_DB=true
+      - SECRET_KEY=${SECRET_KEY}
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+    ports:
+      - "8001:8001"
+    depends_on:
+      mongodb-local:
+        condition: service_healthy
+      sync-service:
+        condition: service_started
+    networks:
+      - mfirme_network
+    restart: unless-stopped
+
+  # Frontend React (via Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mfirme_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - mfirme_network
+    restart: unless-stopped
+
+  # Redis pentru caching (opțional)
+  redis:
+    image: redis:7-alpine
+    container_name: mfirme_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mfirme_network
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mongodb_local_data:
+    driver: local
+  redis_data:
+    driver: local
+  sync_logs:
+    driver: local
+
+networks:
+  mfirme_network:
+    driver: bridge

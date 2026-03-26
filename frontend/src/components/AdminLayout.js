@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  Home
+  Home,
+  Database
 } from 'lucide-react';
 
 const AdminLayout = ({ children }) => {
@@ -27,6 +28,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Firme', path: '/admin/companies', icon: Building2 },
     { name: 'Utilizatori', path: '/admin/users', icon: Users },
+    { name: 'Sincronizare DB', path: '/admin/sync', icon: Database },
     { name: 'Abonamente', path: '/admin/subscriptions', icon: CreditCard },
     { name: 'Plăți', path: '/admin/payments', icon: DollarSign },
     { name: 'API Keys', path: '/admin/api-keys', icon: Key },

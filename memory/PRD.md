@@ -99,6 +99,44 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
    - Updated `Header.js` with credits badge
    - Updated `AdminDashboardPage.js` with toggle button
 
+### Session 5 (Current) - Hybrid Database Architecture
+**Date: March 2026**
+
+#### Completed Features:
+1. **Local MongoDB for Fast Reads** ✅
+   - Docker Compose configuration for MongoDB local + sync service
+   - 64GB RAM optimized setup (32GB WiredTiger cache)
+   - Fallback automat la cloud dacă local DB este down
+
+2. **Sync Service** ✅
+   - Real-time sync via MongoDB Change Streams
+   - Manual full sync triggered din Admin panel
+   - Support pentru colecții: firme, bilanturi, caen_codes, postal_codes, localities
+   - Progress tracking și logging
+
+3. **Admin Sync Dashboard** ✅
+   - Pagină dedicată `/admin/sync`
+   - Toggle între modul LOCAL și CLOUD
+   - Buton "Sync Complet" pentru sincronizare manuală
+   - Statistici per colecție (documente, dimensiune, indexuri)
+   - Status sync service în timp real
+
+4. **New Files Created:**
+   - `/app/docker-compose.production.yml` - Production Docker config
+   - `/app/sync-service/` - Sync service complet (Python)
+   - `/app/backend/routes/admin_sync_routes.py` - API endpoints sync
+   - `/app/frontend/src/pages/AdminSyncPage.js` - Admin UI
+
+5. **Architecture:**
+```
+Docker Compose Production:
+├── mongodb-local (port 27017, 32GB cache)
+├── sync-service (Change Streams + manual sync)
+├── backend (FastAPI, dual DB support)
+├── frontend (React/Nginx)
+└── redis (cache, 2GB)
+```
+
 ## Database Schema
 
 ### justportal (Read-Only)
@@ -112,9 +150,17 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 - `postal_codes` - 55,123 Romanian postal codes
 - `localities` - 13,856 aggregated locality records
 - `caen_codes` - 615 CAEN Rev.2 codes with descriptions
-- `user_credits` - User credit balances and viewed companies (NEW)
-- `app_settings` - System-wide settings (NEW)
-- `credit_transactions` - Credit purchase logs (NEW)
+- `user_credits` - User credit balances and viewed companies
+- `app_settings` - System-wide settings
+- `credit_transactions` - Credit purchase logs
+
+### mfirme_local (NEW - Local MongoDB for fast reads)
+- `firme` - Synced from cloud (1.2M companies)
+- `bilanturi` - Synced from cloud (financial data)
+- `caen_codes` - Synced from cloud
+- `postal_codes` - Synced from cloud
+- `localities` - Synced from cloud
+- `sync_status` - Tracks last sync per collection
 
 ## Key API Endpoints
 
@@ -133,6 +179,14 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 ### Admin
 - `POST /api/admin/companies/search` - Admin company search
 - `PUT /api/admin/companies/{cui}/override` - Save manual override
+- `POST /api/admin/settings/credits-system/toggle` - Toggle credits on/off
+
+### Admin Sync (NEW)
+- `GET /api/admin/sync/status` - Sync status (local vs cloud)
+- `POST /api/admin/sync/trigger-full` - Start full sync (background)
+- `POST /api/admin/sync/trigger-collection/{name}` - Sync single collection
+- `POST /api/admin/sync/switch-mode` - Switch local/cloud mode
+- `GET /api/admin/sync/local-stats` - Local DB statistics
 
 ## Prioritized Backlog
 
@@ -148,6 +202,7 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 - [ ] Complete Stripe payment flow verification for subscriptions
 - [ ] API key management for premium users
 - [ ] Admin subscription management
+- [ ] Test hybrid DB in production environment with real data
 
 ### P2 (Medium Priority)
 - [ ] Advanced search engine migration (Elasticsearch)
@@ -162,13 +217,20 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
 ## File Structure
 ```
 /app
+├── docker-compose.production.yml (NEW - production Docker config)
+├── sync-service/ (NEW)
+│   ├── sync_service.py (Change Streams + full sync)
+│   ├── api.py (FastAPI endpoints for sync control)
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── backend/
 │   ├── server.py (main FastAPI app)
-│   ├── database.py (dual DB connections)
+│   ├── database.py (UPDATED - dual DB support with fallback)
 │   ├── routes/
-│   │   ├── credits_routes.py (NEW - credits system)
+│   │   ├── admin_sync_routes.py (NEW)
+│   │   ├── credits_routes.py
 │   │   ├── postal_routes.py
-│   │   ├── admin_routes.py (UPDATED - toggle + stats)
+│   │   ├── admin_routes.py
 │   │   └── ...
 │   └── scripts/
 │       ├── import_postal_codes.py
@@ -177,15 +239,17 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
     └── src/
         ├── contexts/
         │   ├── AuthContext.js
-        │   └── CreditsContext.js (NEW)
+        │   └── CreditsContext.js
         ├── components/
+        │   ├── AdminLayout.js (UPDATED - sync link)
         │   ├── FinancialChart.js
-        │   ├── Header.js (UPDATED - credits badge)
-        │   └── NoCreditsModal.js (NEW)
+        │   ├── Header.js
+        │   └── NoCreditsModal.js
         └── pages/
-            ├── CompanyPage.js (UPDATED - credit consumption)
-            ├── CreditsPage.js (NEW)
-            └── AdminDashboardPage.js (UPDATED - toggle)
+            ├── AdminSyncPage.js (NEW)
+            ├── CompanyPage.js
+            ├── CreditsPage.js
+            └── AdminDashboardPage.js
 ```
 
 ## Notes for Next Developer
