@@ -76,6 +76,107 @@ async def list_companies(
         "limit": limit
     }
 
+
+@router.get("/full/{cui}")
+async def get_full_company_data(
+    cui: str,
+    current_user = Depends(require_admin)
+):
+    """
+    Get ALL fields for a company - for admin editing.
+    Returns raw data + any existing overrides.
+    """
+    readonly_db = get_readonly_db()
+    app_db = get_app_db()
+    
+    # Get raw company data
+    company = await readonly_db.firme.find_one({"cui": cui})
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Convert ObjectId to string
+    if '_id' in company:
+        company['_id'] = str(company['_id'])
+    
+    # Get existing overrides
+    overrides = await app_db.company_overrides.find_one({"cui": cui})
+    if overrides:
+        for field, value in overrides.get('overrides', {}).items():
+            company[field] = value
+        company['_has_overrides'] = True
+        company['_override_notes'] = overrides.get('notes')
+        company['_override_updated'] = overrides.get('updated_at')
+    
+    # Get CAEN description
+    if company.get('anaf_cod_caen'):
+        caen_code = str(company['anaf_cod_caen']).strip()[:4]
+        caen_info = await readonly_db.caen_codes.find_one({"cod": caen_code}, {"_id": 0})
+        if caen_info:
+            company['caen_denumire'] = caen_info.get('denumire')
+            company['caen_sectiune'] = caen_info.get('sectiune')
+            company['caen_sectiune_denumire'] = caen_info.get('sectiune_denumire')
+    
+    return company
+
+
+@router.put("/update/{cui}")
+async def update_company_data(
+    cui: str,
+    data: dict,
+    current_user = Depends(require_admin)
+):
+    """
+    Update company data as overrides.
+    Does NOT modify original data - stores overrides separately.
+    """
+    readonly_db = get_readonly_db()
+    app_db = get_app_db()
+    
+    # Verify company exists
+    company = await readonly_db.firme.find_one({"cui": cui}, {"_id": 0, "denumire": 1})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    overrides = data.get('overrides', {})
+    notes = data.get('notes', '')
+    
+    if not overrides:
+        raise HTTPException(status_code=400, detail="No overrides provided")
+    
+    # Save overrides
+    result = await app_db.company_overrides.update_one(
+        {"cui": cui},
+        {
+            "$set": {
+                "cui": cui,
+                "denumire": company.get('denumire'),
+                "overrides": overrides,
+                "notes": notes,
+                "updated_at": datetime.now(timezone.utc),
+                "updated_by": current_user.get('email')
+            }
+        },
+        upsert=True
+    )
+    
+    # Log the action
+    await app_db.audit_logs.insert_one({
+        "action": "company_update",
+        "admin_email": current_user.get('email'),
+        "cui": cui,
+        "changes": list(overrides.keys()),
+        "notes": notes,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "status": "success",
+        "message": f"Updated {len(overrides)} fields for company {cui}",
+        "fields_updated": list(overrides.keys())
+    }
+
+
 @router.post("/search")
 async def search_companies(
     request: CompanySearchRequest,
