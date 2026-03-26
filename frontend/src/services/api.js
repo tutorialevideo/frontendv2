@@ -1,7 +1,7 @@
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 export const api = {
-  // Search
+  // Search - tries Elasticsearch first, falls back to MongoDB
   searchSuggest: async (query) => {
     const res = await fetch(`${API_URL}/api/search/suggest?q=${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error('Search suggest failed');
@@ -9,12 +9,49 @@ export const api = {
   },
 
   search: async (params) => {
+    // Try Elasticsearch first
+    try {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) searchParams.append(key, value);
+      });
+      
+      const esRes = await fetch(`${API_URL}/api/elasticsearch/search/simple?${searchParams}`);
+      if (esRes.ok) {
+        const esData = await esRes.json();
+        if (esData.success && esData.data) {
+          return {
+            results: esData.data.results,
+            total: esData.data.pagination.total,
+            page: esData.data.pagination.page,
+            pages: esData.data.pagination.pages,
+            search_engine: 'elasticsearch'
+          };
+        }
+      }
+    } catch (esError) {
+      console.log('Elasticsearch not available, falling back to MongoDB');
+    }
+    
+    // Fallback to MongoDB search
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value) searchParams.append(key, value);
     });
     const res = await fetch(`${API_URL}/api/search?${searchParams}`);
     if (!res.ok) throw new Error('Search failed');
+    const data = await res.json();
+    return { ...data, search_engine: 'mongodb' };
+  },
+
+  // Direct Elasticsearch search (for advanced use)
+  searchElasticsearch: async (params) => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) searchParams.append(key, value);
+    });
+    const res = await fetch(`${API_URL}/api/elasticsearch/search/simple?${searchParams}`);
+    if (!res.ok) throw new Error('Elasticsearch search failed');
     return res.json();
   },
 

@@ -206,6 +206,16 @@ MongoDB:
 - `GET /api/v1/geo/localitati` - Get localities (Enterprise)
 - `GET /api/v1/caen/{code}` - Get companies by CAEN (Enterprise)
 
+### Elasticsearch (NEW - Faza 7)
+- `GET /api/elasticsearch/status` - Get ES cluster & index status
+- `GET /api/elasticsearch/config` - Get ES configuration info
+- `POST /api/elasticsearch/create-index` - Create companies index
+- `POST /api/elasticsearch/start-indexing` - Start background indexing
+- `POST /api/elasticsearch/stop-indexing` - Stop indexing
+- `DELETE /api/elasticsearch/delete-index` - Delete index
+- `POST /api/elasticsearch/search` - Fuzzy search companies
+- `GET /api/elasticsearch/search/simple` - Simple GET search endpoint
+
 ## Prioritized Backlog
 
 ### P0 (Critical) - DONE
@@ -215,6 +225,7 @@ MongoDB:
 - ✅ Credits system with daily free views
 - ✅ Admin toggle for credits system
 - ✅ API key management for premium users (Faza 6)
+- ✅ Elasticsearch integration for fuzzy search (Faza 7)
 
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently simulated)
@@ -224,7 +235,6 @@ MongoDB:
 - [ ] SEO templates pentru firme și categorii (index/noindex control)
 
 ### P2 (Medium Priority)
-- [ ] Advanced search engine migration (Elasticsearch)
 - [ ] Bulk SEO metadata editing
 - [ ] Export functionality
 - [ ] AI-generated SEO text pentru firme (template-uri inteligente)
