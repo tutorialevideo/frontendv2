@@ -21,6 +21,61 @@ async def require_admin(current_user = Depends(get_current_user)):
     
     return current_user
 
+
+@router.get("/list")
+async def list_companies(
+    skip: int = 0,
+    limit: int = 50,
+    q: str = "",
+    current_user = Depends(require_admin)
+):
+    """
+    List companies with pagination and key status indicators.
+    Returns: denumire, cui, judet, localitate, has_bilant, anaf_active, platitor_tva, has_bpi, cifra_afaceri
+    """
+    readonly_db = get_readonly_db()
+    
+    # Build query
+    if q.strip():
+        if q.isdigit():
+            query = {"cui": q}
+        else:
+            query = {"denumire": {"$regex": q, "$options": "i"}}
+    else:
+        query = {}
+    
+    # Get total count
+    total = await readonly_db.firme.count_documents(query)
+    
+    # Get companies with projection for faster query
+    projection = {
+        "_id": 0,
+        "cui": 1,
+        "denumire": 1,
+        "judet": 1,
+        "localitate": 1,
+        "mf_an_bilant": 1,
+        "mf_cifra_afaceri": 1,
+        "mf_platitor_tva": 1,
+        "anaf_platitor_tva": 1,
+        "anaf_stare_startswith_inregistrat": 1,
+        "anaf_inactiv": 1,
+        "has_bpi": 1
+    }
+    
+    cursor = readonly_db.firme.find(query, projection).skip(skip).limit(limit)
+    
+    companies = []
+    async for company in cursor:
+        companies.append(company)
+    
+    return {
+        "companies": companies,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
 @router.post("/search")
 async def search_companies(
     request: CompanySearchRequest,
