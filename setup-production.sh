@@ -40,7 +40,8 @@ fi
 # Build and start
 echo ""
 echo "Construiesc și pornesc serviciile..."
-docker compose -f docker-compose.production.yml up -d --build
+docker compose -f docker-compose.production.yml build --no-cache
+docker compose -f docker-compose.production.yml up -d
 
 # Wait for services
 echo ""
