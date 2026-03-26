@@ -3,21 +3,26 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy all package files
 COPY package.json ./
+COPY craco.config.js ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 
-# Install dependencies with legacy peer deps to avoid conflicts
-RUN yarn install --network-timeout 100000 || npm install --legacy-peer-deps
+# Install dependencies
+RUN yarn install --network-timeout 100000
 
 # Copy source code
-COPY . .
+COPY public ./public
+COPY src ./src
 
-# Set production env - empty BACKEND_URL means use relative /api paths
+# Set production env
 ENV REACT_APP_BACKEND_URL=""
 ENV CI=false
+ENV DISABLE_ESLINT_PLUGIN=true
 
-# Build the app (uses craco)
-RUN yarn build || npm run build
+# Build the app
+RUN yarn build
 
 # Production stage with Nginx
 FROM nginx:alpine
