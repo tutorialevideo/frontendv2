@@ -17,17 +17,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  MapPin,
-  Phone,
-  Mail,
-  Calendar,
-  Users,
-  DollarSign,
-  Briefcase,
   ArrowLeft,
-  ExternalLink,
-  Copy,
-  Trash2
+  ExternalLink
 } from 'lucide-react';
 
 const AdminCompaniesPage = () => {
@@ -147,72 +138,9 @@ const AdminCompaniesPage = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert('Copiat în clipboard!');
   };
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
-  // Field categories for organization
-  const fieldCategories = {
-    'Identificare': ['cui', 'denumire', 'cod_inregistrare', 'euid'],
-    'Locație': ['judet', 'localitate', 'strada', 'numar', 'bloc', 'scara', 'etaj', 'apartament', 'cod_postal'],
-    'Contact': ['anaf_telefon', 'anaf_fax', 'email', 'website'],
-    'Juridic': ['forma_juridica', 'anaf_forma_juridica', 'anaf_forma_organizare', 'anaf_forma_proprietate'],
-    'ANAF': ['anaf_stare', 'anaf_data_inregistrare', 'anaf_cod_caen', 'anaf_platitor_tva', 'anaf_inactiv', 'anaf_stare_startswith_inregistrat'],
-    'CAEN': ['caen_denumire', 'caen_sectiune', 'caen_sectiune_denumire'],
-    'Financiar': ['mf_cifra_afaceri', 'mf_profit', 'mf_numar_angajati', 'mf_an_bilant', 'mf_platitor_tva'],
-    'Alte date': []
-  };
-
-  const getFieldValue = (fieldName) => {
-    if (editMode && fieldName in editedFields) {
-      return editedFields[fieldName];
-    }
-    return fullCompanyData?.[fieldName];
-  };
-
-  const formatFieldValue = (value) => {
-    if (value === null || value === undefined) return '-';
-    if (typeof value === 'boolean') return value ? 'Da' : 'Nu';
-    if (typeof value === 'number') return value.toLocaleString('ro-RO');
-    return String(value);
-  };
-
-  const renderField = (fieldName, value) => {
-    const displayValue = getFieldValue(fieldName);
-    const isEdited = fieldName in editedFields;
-
-    return (
-      <div key={fieldName} className="flex items-start justify-between py-2 border-b border-border last:border-0">
-        <div className="flex-1">
-          <label className="text-xs text-muted-foreground block mb-1">{fieldName}</label>
-          {editMode ? (
-            <input
-              type="text"
-              value={displayValue ?? ''}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
-              className={`w-full px-2 py-1 text-sm border rounded bg-background ${isEdited ? 'border-primary bg-primary/5' : 'border-border'}`}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className={`text-sm ${displayValue ? '' : 'text-muted-foreground'}`}>
-                {formatFieldValue(displayValue)}
-              </span>
-              {displayValue && (
-                <button
-                  onClick={() => copyToClipboard(String(displayValue))}
-                  className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Copiază"
-                >
-                  <Copy className="w-3 h-3 text-muted-foreground" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   // Company Profile View
   if (showProfile) {
@@ -227,19 +155,17 @@ const AdminCompaniesPage = () => {
       );
     }
     
-    const usedFields = new Set(Object.values(fieldCategories).flat());
-    const otherFields = Object.keys(fullCompanyData).filter(
-      k => !usedFields.has(k) && k !== '_id' && k !== 'id'
-    );
-    fieldCategories['Alte date'] = otherFields;
+    // Get all fields sorted alphabetically
+    const allFields = Object.keys(fullCompanyData)
+      .filter(k => k !== '_id' && k !== 'id' && !k.startsWith('_'))
+      .sort();
 
     return (
       <AdminLayout>
-
         {/* Header */}
         <div className="mb-6">
           <button
-            onClick={() => { setShowProfile(false); setSelectedCompany(null); setFullCompanyData(null); }}
+            onClick={() => { setShowProfile(false); setSelectedCompany(null); setFullCompanyData(null); setEditMode(false); setEditedFields({}); }}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -276,12 +202,7 @@ const AdminCompaniesPage = () => {
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    {saveLoading ? 'Salvare...' : 'Salvează modificările'}
-                    {Object.keys(editedFields).length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">
-                        {Object.keys(editedFields).length}
-                      </span>
-                    )}
+                    {saveLoading ? 'Salvare...' : `Salvează (${Object.keys(editedFields).length})`}
                   </button>
                   <button
                     onClick={() => { setEditMode(false); setEditedFields({}); }}
@@ -320,92 +241,65 @@ const AdminCompaniesPage = () => {
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-2">
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900">
-              <strong>Mod editare activ.</strong> Modificările se salvează ca override-uri și vor fi vizibile pe profilul public al firmei.
-              Câmpurile modificate sunt evidențiate cu albastru.
+              <strong>Mod editare activ.</strong> Modificările se salvează ca override-uri. Câmpurile modificate sunt evidențiate cu albastru.
             </div>
           </div>
         )}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <DollarSign className="w-4 h-4" />
-              <span className="text-xs">Cifra de afaceri</span>
-            </div>
-            <div className="text-lg font-semibold">
-              {fullCompanyData.mf_cifra_afaceri 
-                ? `${Number(fullCompanyData.mf_cifra_afaceri).toLocaleString('ro-RO')} RON`
-                : '-'
-              }
-            </div>
+        {/* All Fields Table */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold">Toate datele ({allFields.length} câmpuri)</h3>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Activity className="w-4 h-4" />
-              <span className="text-xs">Profit</span>
-            </div>
-            <div className="text-lg font-semibold">
-              {fullCompanyData.mf_profit 
-                ? `${Number(fullCompanyData.mf_profit).toLocaleString('ro-RO')} RON`
-                : '-'
-              }
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Users className="w-4 h-4" />
-              <span className="text-xs">Angajați</span>
-            </div>
-            <div className="text-lg font-semibold">
-              {fullCompanyData.mf_numar_angajati ?? '-'}
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Briefcase className="w-4 h-4" />
-              <span className="text-xs">Cod CAEN</span>
-            </div>
-            <div className="text-lg font-semibold font-mono">
-              {fullCompanyData.anaf_cod_caen || '-'}
-            </div>
-            {fullCompanyData.caen_denumire && (
-              <div className="text-xs text-muted-foreground mt-0.5">{fullCompanyData.caen_denumire}</div>
-            )}
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/30">
+                <tr>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground w-1/3">Câmp</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground">Valoare</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {allFields.map(fieldName => {
+                  const originalValue = fullCompanyData[fieldName];
+                  const isEdited = fieldName in editedFields;
+                  const displayValue = isEdited ? editedFields[fieldName] : originalValue;
+                  
+                  return (
+                    <tr key={fieldName} className={`hover:bg-muted/20 ${isEdited ? 'bg-primary/5' : ''}`}>
+                      <td className="px-4 py-2">
+                        <span className="text-sm font-medium">{fieldName}</span>
+                        {isEdited && <span className="ml-2 text-xs text-primary">(modificat)</span>}
+                      </td>
+                      <td className="px-4 py-2">
+                        {editMode ? (
+                          <input
+                            type="text"
+                            value={displayValue ?? ''}
+                            onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+                            className={`w-full px-2 py-1 text-sm border rounded bg-background ${isEdited ? 'border-primary' : 'border-border'}`}
+                          />
+                        ) : (
+                          <span className={`text-sm ${displayValue !== null && displayValue !== undefined && displayValue !== '' ? '' : 'text-muted-foreground'}`}>
+                            {displayValue === null || displayValue === undefined || displayValue === '' 
+                              ? '-' 
+                              : typeof displayValue === 'boolean' 
+                                ? (displayValue ? 'Da' : 'Nu')
+                                : typeof displayValue === 'number'
+                                  ? displayValue.toLocaleString('ro-RO')
+                                  : String(displayValue)
+                            }
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
-
-        {/* All Fields by Category */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(fieldCategories).map(([category, fields]) => {
-            const categoryFields = fields.filter(f => fullCompanyData.hasOwnProperty(f) || editMode);
-            if (categoryFields.length === 0 && !editMode) return null;
-
-            return (
-              <div key={category} className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-muted/50 border-b border-border">
-                  <h3 className="font-semibold text-sm">{category}</h3>
-                </div>
-                <div className="p-4 space-y-1 group">
-                  {fields.map(fieldName => {
-                    if (!fullCompanyData.hasOwnProperty(fieldName) && !editMode) return null;
-                    return renderField(fieldName, fullCompanyData[fieldName]);
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Raw JSON (collapsible) */}
-        <details className="mt-6 bg-card border border-border rounded-xl">
-          <summary className="px-4 py-3 cursor-pointer hover:bg-muted/50 font-medium text-sm">
-            Date brute (JSON) - {Object.keys(fullCompanyData).length} câmpuri
-          </summary>
-          <pre className="p-4 text-xs overflow-x-auto bg-muted/30 max-h-96">
-            {JSON.stringify(fullCompanyData, null, 2)}
-          </pre>
-        </details>
       </AdminLayout>
     );
   }
