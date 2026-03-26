@@ -307,24 +307,24 @@ const AdminSyncPage = () => {
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Firme</span>
-                <span className="font-mono font-medium">{formatNumber(cloudCounts.firme)}</span>
+                <span className="font-mono font-medium">{formatNumber(cloudCounts.firme || 0)}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Bilanțuri</span>
-                <span className="font-mono font-medium">{formatNumber(cloudCounts.bilanturi)}</span>
+                <span className="font-mono font-medium">{formatNumber(cloudCounts.bilanturi || 0)}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Status</span>
-                <span className={`flex items-center gap-1 ${mongoConfig.cloudUrl ? 'text-green-600' : 'text-amber-600'}`}>
-                  {mongoConfig.cloudUrl ? (
+                <span className={`flex items-center gap-1 ${syncStatus?.cloud_connected ? 'text-green-600' : 'text-amber-600'}`}>
+                  {syncStatus?.cloud_connected ? (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      Configurat
+                      Conectat
                     </>
                   ) : (
                     <>
                       <AlertCircle className="w-4 h-4" />
-                      Neconfigurat
+                      Neconectat
                     </>
                   )}
                 </span>
