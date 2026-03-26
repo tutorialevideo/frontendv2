@@ -1,114 +1,135 @@
 version: '3.8'
 
 services:
-  # MongoDB Local - pentru date firme (read-heavy) - INTERNAL ONLY
-  mongodb-local:
-    image: mongo:7.0
-    container_name: mfirme_mongodb_local
-    environment:
-      - MONGO_INITDB_DATABASE=mfirme_local
-    # ports removed - internal only
+  # ===========================================
+  # MongoDB - Baza de date principală
+  # ===========================================
+  mongodb:
+    image: mongo:6
+    container_name: mfirme-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
     volumes:
-      - mongodb_local_data:/data/db
+      - mongodb_data:/data/db
     networks:
-      - mfirme_network
+      - mfirme-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
-    # Optimize for read-heavy workload with 64GB RAM
-    command: >
-      mongod 
-      --wiredTigerCacheSizeGB 32
-      --setParameter diagnosticDataCollectionEnabled=false
 
-  # Sync Service - sincronizează MongoDB Atlas → Local - INTERNAL ONLY
-  sync-service:
-    build:
-      context: ./sync-service
-      dockerfile: Dockerfile
-    container_name: mfirme_sync_service
-    env_file:
-      - .env
+  # ===========================================
+  # Elasticsearch - Motor de căutare fuzzy
+  # ===========================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: mfirme-elasticsearch
+    restart: always
     environment:
-      - MONGO_CLOUD_URL=${MONGO_URL}
-      - MONGO_LOCAL_URL=mongodb://mongodb-local:27017/mfirme_local
-      - SYNC_COLLECTIONS=firme,bilanturi,caen_codes,postal_codes,localities
-      - PYTHONUNBUFFERED=1
-    depends_on:
-      mongodb-local:
-        condition: service_healthy
-    networks:
-      - mfirme_network
-    restart: unless-stopped
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - cluster.name=mfirme-cluster
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
-      - sync_logs:/app/logs
-    # port 8002 internal only - accessed via backend
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - mfirme-network
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  # Backend FastAPI
+  # ===========================================
+  # Backend - FastAPI
+  # ===========================================
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: mfirme_backend
-    env_file:
-      - .env
+      dockerfile: Dockerfile.production
+    container_name: mfirme-backend
+    restart: always
+    ports:
+      - "8001:8001"
     environment:
-      - MONGO_LOCAL_URL=mongodb://mongodb-local:27017/mfirme_local
-      - USE_LOCAL_DB=true
-      - SYNC_SERVICE_URL=http://sync-service:8002
-    expose:
-      - "8001"
+      - MONGO_URL=mongodb://mongodb:27017/mfirme_local
+      - APP_MONGO_URL=mongodb://mongodb:27017/mfirme_app
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SECRET_KEY=${SECRET_KEY:-mfirme_secret_key_change_in_production}
+      - ENVIRONMENT=production
     depends_on:
-      mongodb-local:
+      mongodb:
         condition: service_healthy
-      sync-service:
-        condition: service_started
+      elasticsearch:
+        condition: service_healthy
     networks:
-      - mfirme_network
-    restart: unless-stopped
+      - mfirme-network
 
-  # Frontend React (via Nginx) - Production on port 80
+  # ===========================================
+  # Frontend - React (served by Nginx)
+  # ===========================================
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: mfirme_frontend
+      dockerfile: Dockerfile.production
+      args:
+        - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
+    container_name: mfirme-frontend
+    restart: always
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
     networks:
-      - mfirme_network
-    restart: unless-stopped
+      - mfirme-network
 
-  # Redis pentru caching - INTERNAL ONLY
-  redis:
-    image: redis:7-alpine
-    container_name: mfirme_redis
-    # ports removed - internal only
+  # ===========================================
+  # Nginx - Reverse Proxy
+  # ===========================================
+  nginx:
+    image: nginx:alpine
+    container_name: mfirme-nginx
+    restart: always
+    ports:
+      - "80:80"
     volumes:
-      - redis_data:/data
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
     networks:
-      - mfirme_network
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      - mfirme-network
+
+  # ===========================================
+  # Kibana - UI pentru Elasticsearch (optional)
+  # ===========================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: mfirme-kibana
     restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - mfirme-network
+    profiles:
+      - debug
 
 volumes:
-  mongodb_local_data:
-    driver: local
-  redis_data:
-    driver: local
-  sync_logs:
-    driver: local
+  mongodb_data:
+  elasticsearch_data:
 
 networks:
-  mfirme_network:
+  mfirme-network:
     driver: bridge
