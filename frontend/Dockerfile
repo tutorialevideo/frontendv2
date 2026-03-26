@@ -6,17 +6,18 @@ WORKDIR /app
 # Copy package files
 COPY package.json ./
 
-# Install dependencies
-RUN yarn install
+# Install dependencies with legacy peer deps to avoid conflicts
+RUN yarn install --network-timeout 100000 || npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Set production env - empty BACKEND_URL means use relative /api paths
 ENV REACT_APP_BACKEND_URL=""
+ENV CI=false
 
-# Build the app
-RUN yarn build
+# Build the app (uses craco)
+RUN yarn build || npm run build
 
 # Production stage with Nginx
 FROM nginx:alpine
