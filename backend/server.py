@@ -321,16 +321,31 @@ async def find_caen_description(app_db, caen_code: str) -> dict:
         return None
     
     # Normalize CAEN code (remove spaces, get first 4 digits)
-    caen_normalized = caen_code.strip().replace(' ', '')[:4]
+    caen_normalized = str(caen_code).strip().replace(' ', '')[:4]
     
-    try:
-        caen_record = await app_db.caen_codes.find_one(
-            {"cod": caen_normalized},
-            {"_id": 0, "denumire": 1, "sectiune": 1, "sectiune_denumire": 1}
-        )
-        return caen_record
-    except Exception as e:
-        print(f"Error finding CAEN description: {e}")
+    # First try local companies DB (mfirme_local) where CAEN codes are stored
+    companies_db = get_companies_db()
+    if companies_db is not None:
+        try:
+            caen_record = await companies_db.caen_codes.find_one(
+                {"cod": caen_normalized},
+                {"_id": 0, "denumire": 1, "sectiune": 1, "sectiune_denumire": 1}
+            )
+            if caen_record:
+                return caen_record
+        except Exception as e:
+            print(f"Error finding CAEN in local DB: {e}")
+    
+    # Fallback to app_db if provided
+    if app_db is not None:
+        try:
+            caen_record = await app_db.caen_codes.find_one(
+                {"cod": caen_normalized},
+                {"_id": 0, "denumire": 1, "sectiune": 1, "sectiune_denumire": 1}
+            )
+            return caen_record
+        except Exception as e:
+            print(f"Error finding CAEN in app DB: {e}")
     
     return None
 
