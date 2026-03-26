@@ -9,8 +9,8 @@ COPY craco.config.js ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
-# Install dependencies
-RUN yarn install --network-timeout 100000
+# Install dependencies with npm (more reliable in Docker)
+RUN npm install --legacy-peer-deps --loglevel=error
 
 # Copy source code
 COPY public ./public
@@ -22,7 +22,7 @@ ENV CI=false
 ENV DISABLE_ESLINT_PLUGIN=true
 
 # Build the app
-RUN yarn build
+RUN npm run build
 
 # Production stage with Nginx
 FROM nginx:alpine
