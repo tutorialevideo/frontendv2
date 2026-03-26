@@ -11,9 +11,8 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better caching
 COPY requirements.docker.txt ./requirements.txt
 
-# Install dependencies including emergentintegrations from custom index
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
