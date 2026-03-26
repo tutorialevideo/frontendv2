@@ -424,7 +424,7 @@ async def get_judete():
 
 @app.get("/api/geo/localitati")
 async def get_localitati(judet: Optional[str] = None):
-    """Get list of localities, optionally filtered by county"""
+    """Get list of localities, optionally filtered by county, sorted by company count"""
     db = get_companies_db()
     
     match_stage = {}
@@ -440,7 +440,7 @@ async def get_localitati(judet: Optional[str] = None):
             },
             "count": {"$sum": 1}
         }},
-        {"$sort": {"_id.localitate": 1}},
+        {"$sort": {"count": -1}},  # Sort by company count descending
         {"$limit": 500},
         {"$project": {
             "localitate": "$_id.localitate",

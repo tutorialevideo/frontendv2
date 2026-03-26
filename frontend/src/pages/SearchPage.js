@@ -30,8 +30,15 @@ const SearchPage = ({ initialFilters = {} }) => {
   useEffect(() => {
     if (selectedJudet) {
       loadLocalitati(selectedJudet);
+    } else {
+      setLocalitati([]);
     }
   }, [selectedJudet]);
+
+  // Load judete on mount
+  useEffect(() => {
+    loadJudete();
+  }, []);
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
