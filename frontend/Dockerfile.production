@@ -9,6 +9,9 @@ COPY package*.json ./
 # Install dependencies (ignore peer deps conflicts)
 RUN npm install --legacy-peer-deps
 
+# Fix ajv dependency issue
+RUN npm install ajv@8 --legacy-peer-deps
+
 # Copy source code
 COPY . .
 
