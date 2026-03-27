@@ -134,7 +134,7 @@ MongoDB:
 └── Cloud Atlas (sync source only)
 ```
 
-### Session 6 (Current) - Bug Fix & API Utilities
+### Session 6 - Bug Fix & API Utilities
 **Date: March 2026**
 
 #### Completed Features:
@@ -148,6 +148,40 @@ MongoDB:
    - `safeJsonParse()` - Safe single-parse JSON extraction
    - `safeFetch()` - Fetch wrapper with automatic safe parsing
    - `createApiClient()` - Authenticated API client factory
+
+### Session 7 (Current) - Dynamic SEO Templates
+**Date: March 2026**
+
+#### Completed Features:
+1. **SEO Templates Admin Page** ✅
+   - New admin page `/admin/seo` for managing SEO templates
+   - 6 page types: Company, Search, CAEN Category, Homepage, Județ, Localitate
+   - Live preview of templates with sample data
+   - Toggle index/noindex per page type
+   - Save and Reset to default functionality
+
+2. **Dynamic Variables System** ✅
+   - Variables: `{DENUMIRE}`, `{CUI}`, `{LOCALITATE}`, `{JUDET}`, `{CAEN}`, `{CAEN_DESCRIERE}`, `{QUERY}`, `{AN}`, `{CIFRA_AFACERI}`, `{PROFIT}`
+   - Auto-replacement in title and description templates
+   - Context-aware variables (each page type has relevant variables)
+
+3. **SEO Hook for Frontend** ✅
+   - New hook: `/app/frontend/src/hooks/useSeoTemplate.js`
+   - Caches templates for 5 minutes
+   - Applied to: HomePage, SearchPage, CompanyPage
+   - Fallback to hardcoded values if API fails
+
+4. **Backend SEO Routes** ✅
+   - `GET /api/seo/templates/public` - Get all templates (public)
+   - `GET /api/seo/template/{page_type}` - Get specific template
+   - `PUT /api/seo/admin/template/{page_type}` - Update template (admin)
+   - `POST /api/seo/admin/reset/{page_type}` - Reset to default (admin)
+   - `POST /api/seo/preview` - Preview template with sample data
+
+5. **MongoDB Collection** ✅
+   - New collection: `seo_settings` in mfirme_app database
+   - Stores custom templates per page type
+   - Audit logging for admin changes
 
 ## Database Schema
 
@@ -231,6 +265,15 @@ MongoDB:
 - `POST /api/elasticsearch/search` - Fuzzy search companies
 - `GET /api/elasticsearch/search/simple` - Simple GET search endpoint
 
+### SEO Templates (NEW - Faza 8)
+- `GET /api/seo/templates/public` - Get all SEO templates (public)
+- `GET /api/seo/template/{page_type}` - Get template for page type
+- `GET /api/seo/admin/templates` - Get all templates with admin info
+- `PUT /api/seo/admin/template/{page_type}` - Update template (admin)
+- `POST /api/seo/admin/reset/{page_type}` - Reset to default (admin)
+- `POST /api/seo/admin/reset-all` - Reset all templates (admin)
+- `POST /api/seo/preview` - Preview template with sample data
+
 ## Prioritized Backlog
 
 ### P0 (Critical) - DONE
@@ -241,17 +284,17 @@ MongoDB:
 - ✅ Admin toggle for credits system
 - ✅ API key management for premium users (Faza 6)
 - ✅ Elasticsearch integration for fuzzy search (Faza 7)
+- ✅ Dynamic SEO Templates with admin control (Faza 8)
 
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently simulated)
 - [ ] Complete Stripe payment flow verification for subscriptions
 - [ ] Admin subscription management
 - [ ] Test hybrid DB in production environment with real data
-- [ ] SEO templates pentru firme și categorii (index/noindex control)
 
 ### P2 (Medium Priority)
 - [ ] Bulk SEO metadata editing
-- [ ] Export functionality
+- [ ] Export functionality (CSV/JSON)
 - [ ] AI-generated SEO text pentru firme (template-uri inteligente)
 
 ### P3 (Future/Nice to Have)

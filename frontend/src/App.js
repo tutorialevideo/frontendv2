@@ -23,6 +23,7 @@ import AdminSyncPage from './pages/AdminSyncPage';
 import ApiKeysPage from './pages/ApiKeysPage';
 import AdminApiKeysPage from './pages/AdminApiKeysPage';
 import AdminElasticsearchPage from './pages/AdminElasticsearchPage';
+import AdminSeoPage from './pages/AdminSeoPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import NoCreditsModal from './components/NoCreditsModal';
@@ -58,6 +59,7 @@ function AppContent() {
           <Route path="/admin/sync" element={<AdminSyncPage />} />
           <Route path="/admin/api-keys" element={<AdminApiKeysPage />} />
           <Route path="/admin/elasticsearch" element={<AdminElasticsearchPage />} />
+          <Route path="/admin/seo" element={<AdminSeoPage />} />
         </Routes>
       </main>
       {!isAdminRoute && <Footer />}

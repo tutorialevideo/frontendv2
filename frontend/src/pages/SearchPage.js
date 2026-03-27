@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Building2, TrendingUp, ChevronRight, X } from 'lucide-react';
+import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
 
 const SearchPage = ({ initialFilters = {} }) => {
@@ -121,12 +122,18 @@ const SearchPage = ({ initialFilters = {} }) => {
     updateSearchParams(updates);
   };
 
+  // SEO template
+  const { title: seoTitle, description: seoDescription, index: seoIndex } = useSeoTemplate('search', {
+    QUERY: query || 'toate firmele'
+  });
+
   return (
     <>
       {!isNested && (
         <Helmet>
-          <title>{`Căutare firme${query ? ` - ${query}` : ''} | mFirme`}</title>
-          <meta name="description" content={`Rezultate căutare: ${query || 'toate companiile din România'}`} />
+          <title>{seoTitle || `Căutare firme${query ? ` - ${query}` : ''} | mFirme`}</title>
+          <meta name="description" content={seoDescription || `Rezultate căutare: ${query || 'toate companiile din România'}`} />
+          {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
         </Helmet>
       )}
 

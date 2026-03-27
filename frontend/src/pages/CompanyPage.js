@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart, FileText, DollarSign, Activity, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCredits } from '../contexts/CreditsContext';
+import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
 import FinancialChart from '../components/FinancialChart';
 
@@ -117,6 +118,21 @@ const CompanyPage = () => {
     return String(value);
   };
 
+  // SEO template data - must be called before any conditional returns
+  const seoVariables = {
+    DENUMIRE: company?.denumire || '',
+    CUI: company?.cui || '',
+    LOCALITATE: company?.localitate || '',
+    JUDET: company?.judet || '',
+    CAEN: company?.caen || '',
+    CAEN_DESCRIERE: company?.caen_descriere || company?.caen_description || '',
+    AN: new Date().getFullYear().toString(),
+    CIFRA_AFACERI: company?.cifra_afaceri ? `${Number(company.cifra_afaceri).toLocaleString('ro-RO')} RON` : '',
+    PROFIT: company?.profit ? `${Number(company.profit).toLocaleString('ro-RO')} RON` : ''
+  };
+  
+  const { title: seoTitle, description: seoDescription, index: seoIndex } = useSeoTemplate('company', seoVariables);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -137,8 +153,6 @@ const CompanyPage = () => {
       </div>
     );
   }
-
-  const pageTitle = company.denumire ? `${company.denumire} - CUI ${company.cui} | mFirme` : 'Profil Firmă | mFirme';
   
   // Use full data for admin, otherwise use company data
   const displayData = isAdmin && fullData ? fullData : company;
@@ -147,8 +161,9 @@ const CompanyPage = () => {
   return (
     <>
       <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={`${company.denumire || 'Firmă'} din ${company.localitate || ''}, ${company.judet || ''}. CUI: ${company.cui || ''}. Date financiare, contact și informații complete.`} />
+        <title>{seoTitle || `${company.denumire} - CUI ${company.cui} | mFirme`}</title>
+        <meta name="description" content={seoDescription || `${company.denumire || 'Firmă'} din ${company.localitate || ''}, ${company.judet || ''}. CUI: ${company.cui || ''}.`} />
+        {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
       </Helmet>
 
       <div className="max-w-5xl mx-auto space-y-6">

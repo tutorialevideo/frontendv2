@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Search, Building2, MapPin, TrendingUp, Users } from 'lucide-react';
+import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
 
 const HomePage = () => {
@@ -77,13 +78,16 @@ const HomePage = () => {
     navigate(`/firma/${suggestion.slug}`);
   };
 
+  // SEO template
+  const { title: seoTitle, description: seoDescription } = useSeoTemplate('homepage', {});
+
   return (
     <>
       <Helmet>
-        <title>mFirme - Baza de date complete despre firmele din România</title>
+        <title>{seoTitle || 'mFirme - Baza de date complete despre firmele din România'}</title>
         <meta 
           name="description" 
-          content="Caută și analizează peste 1.2 milioane de firme din România. Date actualizate zilnic: CUI, adresă, date financiare, indicatori."
+          content={seoDescription || 'Caută și analizează peste 1.2 milioane de firme din România. Date actualizate zilnic: CUI, adresă, date financiare, indicatori.'}
         />
       </Helmet>
 
