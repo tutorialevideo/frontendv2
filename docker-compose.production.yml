@@ -58,7 +58,7 @@ services:
     container_name: mfirme-backend
     restart: always
     ports:
-      - "8001:8001"
+      - "8002:8001"
     environment:
       - MONGO_URL=mongodb://mongodb:27017/mfirme_local
       - APP_MONGO_URL=mongodb://mongodb:27017/mfirme_app
