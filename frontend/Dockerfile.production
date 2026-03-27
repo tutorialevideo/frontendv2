@@ -15,9 +15,8 @@ RUN npm install ajv@8 --legacy-peer-deps
 # Copy source code
 COPY . .
 
-# Build argument for backend URL
-ARG REACT_APP_BACKEND_URL=http://localhost
-ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+# Set backend URL - use empty string so it uses relative URLs through nginx proxy
+ENV REACT_APP_BACKEND_URL=""
 
 # Build the app
 RUN npm run build
