@@ -38,33 +38,47 @@ const AdminSyncPage = () => {
 
   const fetchSyncStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/sync/status`, {
+      const response = await fetch(`${API_URL}/api/admin/sync/status`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      // Parse JSON once - safe pattern
+      // Clone status before consuming body
+      const isOk = response.ok;
+      
+      // Parse using text() then JSON.parse() to avoid stream issues
       let data = null;
       try {
-        data = await res.json();
+        const text = await response.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
       } catch (parseErr) {
+        console.warn('Status parse error:', parseErr);
         data = null;
       }
       
-      if (res.ok && data) {
+      if (isOk && data) {
         setSyncStatus(data);
         setError(null);
+        
+        // Auto-stop syncing state when backend reports not running
+        if (syncing && data.sync_state && !data.sync_state.is_running) {
+          setSyncing(false);
+        }
+        
         return data;
       } else {
         setError(data?.detail || 'Failed to fetch sync status');
         return null;
       }
     } catch (err) {
-      setError(err.message);
+      console.error('Fetch status error:', err);
+      setError(err.message || 'Network error');
       return null;
     } finally {
       setLoading(false);
     }
-  }, [token, API_URL]);
+  }, [token, API_URL, syncing]);
 
   useEffect(() => {
     fetchSyncStatus();
@@ -72,19 +86,34 @@ const AdminSyncPage = () => {
     // Load saved config from localStorage
     const savedConfig = localStorage.getItem('mongoSyncConfig');
     if (savedConfig) {
-      setMongoConfig(JSON.parse(savedConfig));
-      setConfigSaved(true);
-    }
-    
-    // Auto-refresh every 5 seconds when syncing
-    const interval = setInterval(() => {
-      if (syncing) {
-        fetchSyncStatus();
+      try {
+        setMongoConfig(JSON.parse(savedConfig));
+        setConfigSaved(true);
+      } catch (e) {
+        console.warn('Invalid saved config');
       }
-    }, 5000);
+    }
+  }, [fetchSyncStatus]);
+  
+  // Separate effect for polling during sync
+  useEffect(() => {
+    if (!syncing) return;
+    
+    const interval = setInterval(() => {
+      fetchSyncStatus();
+    }, 3000);
 
-    return () => clearInterval(interval);
-  }, [fetchSyncStatus, syncing]);
+    // Stop polling after 60 minutes max
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      setSyncing(false);
+    }, 60 * 60 * 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [syncing, fetchSyncStatus]);
 
   const saveConfig = () => {
     localStorage.setItem('mongoSyncConfig', JSON.stringify(mongoConfig));
@@ -98,8 +127,10 @@ const AdminSyncPage = () => {
     }
 
     setSyncing(true);
+    setError(null);
+    
     try {
-      const res = await fetch(`${API_URL}/api/admin/sync/direct-sync`, {
+      const response = await fetch(`${API_URL}/api/admin/sync/direct-sync`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -107,45 +138,42 @@ const AdminSyncPage = () => {
         }
       });
 
-      // Parse JSON once and store the result
-      let data = null;
+      // Clone response status before parsing
+      const isOk = response.ok;
+      const statusCode = response.status;
+      
+      // Parse JSON once
+      let responseData = {};
       try {
-        data = await res.json();
+        const text = await response.text();
+        if (text) {
+          responseData = JSON.parse(text);
+        }
       } catch (parseErr) {
-        // JSON parsing failed - likely empty response
-        data = {};
+        console.warn('JSON parse error:', parseErr);
       }
 
-      if (res.ok) {
-        // Start polling for status
-        const pollInterval = setInterval(async () => {
-          const status = await fetchSyncStatus();
-          // Stop polling when sync is done
-          if (status && !status.sync_state?.is_running) {
-            clearInterval(pollInterval);
-            setSyncing(false);
-          }
-        }, 2000);
-
-        // Stop polling after 60 minutes max
-        setTimeout(() => {
-          clearInterval(pollInterval);
-          setSyncing(false);
-        }, 60 * 60 * 1000);
+      if (isOk) {
+        // Sync started successfully - polling will be handled by useEffect
+        console.log('Sync started:', responseData);
       } else {
-        alert(data?.detail || 'Sync failed to start');
+        const errorMsg = responseData?.detail || `Sync failed (${statusCode})`;
+        alert(errorMsg);
         setSyncing(false);
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      console.error('Sync error:', err);
+      alert('Error: ' + (err.message || 'Network error'));
       setSyncing(false);
     }
   };
 
   const triggerCollectionSync = async (collection) => {
     setSyncing(true);
+    setError(null);
+    
     try {
-      const res = await fetch(`${API_URL}/api/admin/sync/direct-sync?collection=${collection}`, {
+      const response = await fetch(`${API_URL}/api/admin/sync/direct-sync?collection=${collection}`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -153,35 +181,32 @@ const AdminSyncPage = () => {
         }
       });
 
-      // Parse JSON once and store the result
-      let data = null;
+      // Clone response status before parsing
+      const isOk = response.ok;
+      const statusCode = response.status;
+      
+      // Parse JSON once using text() to avoid stream issues
+      let responseData = {};
       try {
-        data = await res.json();
+        const text = await response.text();
+        if (text) {
+          responseData = JSON.parse(text);
+        }
       } catch (parseErr) {
-        // JSON parsing failed - likely empty response
-        data = {};
+        console.warn('JSON parse error:', parseErr);
       }
 
-      if (res.ok) {
-        // Start polling for status
-        const pollInterval = setInterval(async () => {
-          const status = await fetchSyncStatus();
-          if (status && !status.sync_state?.is_running) {
-            clearInterval(pollInterval);
-            setSyncing(false);
-          }
-        }, 2000);
-
-        setTimeout(() => {
-          clearInterval(pollInterval);
-          setSyncing(false);
-        }, 60 * 60 * 1000);
+      if (isOk) {
+        // Sync started successfully
+        console.log('Collection sync started:', responseData);
       } else {
-        alert(data?.detail || 'Sync failed');
+        const errorMsg = responseData?.detail || `Sync failed (${statusCode})`;
+        alert(errorMsg);
         setSyncing(false);
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      console.error('Collection sync error:', err);
+      alert('Error: ' + (err.message || 'Network error'));
       setSyncing(false);
     }
   };
