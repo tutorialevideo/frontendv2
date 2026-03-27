@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /firma/
+Allow: /search
+Allow: /judete
+Allow: /topuri
+
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /api-keys
+
+# Sitemap
+Sitemap: https://mfirme.ro/sitemap.xml
+
+# Crawl-delay (optional, pentru a nu supraîncărca serverul)
+Crawl-delay: 1
