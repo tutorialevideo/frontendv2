@@ -99,7 +99,7 @@ Trebuie inclus un sistem de abonamente cu limitări de date și plăți. Baza de
    - Updated `Header.js` with credits badge
    - Updated `AdminDashboardPage.js` with toggle button
 
-### Session 5 (Current) - Hybrid Database Architecture
+### Session 5 - Hybrid Database Architecture
 **Date: March 2026**
 
 #### Completed Features:
@@ -133,6 +133,21 @@ MongoDB:
 ├── mfirme_app (users, settings)
 └── Cloud Atlas (sync source only)
 ```
+
+### Session 6 (Current) - Bug Fix & API Utilities
+**Date: March 2026**
+
+#### Completed Features:
+1. **Fixed JSON Parsing Error** ✅
+   - Fixed recurring "Body has already been consumed" error in `AdminSyncPage.js`
+   - Applied safe JSON parsing pattern: parse once, use variable
+   - All sync functions now handle JSON parsing errors gracefully
+
+2. **Created API Utility Functions** ✅
+   - New file: `/app/frontend/src/utils/api.js`
+   - `safeJsonParse()` - Safe single-parse JSON extraction
+   - `safeFetch()` - Fetch wrapper with automatic safe parsing
+   - `createApiClient()` - Authenticated API client factory
 
 ## Database Schema
 
@@ -292,3 +307,5 @@ MongoDB:
 7. PyMongo warning: Never use `if db:` - use `if db is not None:` to avoid NotImplementedError
 8. **Sync Service**: The `set_cloud_url` method in `/app/sync-service/sync_service.py` allows dynamic Cloud MongoDB URL updates from Admin UI
 9. **Environment**: In preview environment, MongoDB local is used via `mongodb://localhost:27017/`. For production Docker, use `mongodb://mongodb-local:27017/`
+10. **JSON Parsing**: Always use safe JSON parsing pattern - parse `res.json()` ONCE into a variable, then use that variable for both success and error handling. See `/app/frontend/src/utils/api.js` for utility functions.
+11. **Admin credentials**: `admin@mfirme.ro` / `Admin123!`

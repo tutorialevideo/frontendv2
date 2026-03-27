@@ -1,116 +1,136 @@
-<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (mFirme), bazată pe date publice agregate (1.2 milioane firme). Platforma necesită 3 zone distincte: Site public, Zonă User (autentificare, planuri), și Zonă Admin. Trebuie inclus un sistem de abonamente cu limitări de date. Baza de date a firmelor actualizată automat. Migrarea către o Arhitectură Hibridă (MongoDB local în Docker pentru viteză extremă, sincronizat manual cu baza de date principală din Cloud).
+<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (mFirme), bazată pe date publice agregate (1.2 milioane firme). Platforma necesită 3 zone distincte: Site public, Zonă User (autentificare, planuri), și Zonă Admin. Sistem de abonamente cu limitări de date. Migrare către o Arhitectură Hibridă (MongoDB local pentru viteză, sincronizat cu o bază de date principală din Cloud). Adăugare API Keys management pentru utilizatori premium și motor de căutare Elasticsearch.
 
-**User's preferred language**: Romanian (You MUST automatically detect the user's primary language from their messages inside the <trajectory> tag and INSTRUCT next agent to respond in the user's preferred language only: **Romanian**)
+**User's preferred language**: Romanian (INSTRUCT next agent to respond in the user's preferred language only: **Romanian**)
 
 **what currently exists?**: 
-A fully functional full-stack application (React + FastAPI + MongoDB). The architecture has been strictly defined: the application **always** runs on the Local MongoDB for extreme performance, while the Cloud MongoDB (Atlas) is used **exclusively** as a data source for the Admin synchronization tool. The platform includes a direct backend sync mechanism, real-time sync progress bars, local DB performance metrics, CAEN Rev.2 integration, and comprehensive single-page profiles for companies (both public and admin views) with full raw-data editing capabilities for administrators.
+A robust React + FastAPI + MongoDB platform with a newly integrated Elasticsearch engine for fuzzy searching. The app features a complete API Key Management system (creation, custom limits, tracking) for both users and admins. A full Production Docker Compose setup is now implemented (including Nginx reverse proxy, Frontend, Backend, MongoDB, and Elasticsearch), resolving complex dependency and port conflicts. 
 
 **Last working item**:
-    - **Last item agent was working**: Adding a conditional Admin-only view to the public  so that when an administrator views a public company profile, they see the standard UI plus a special section at the bottom displaying all 85 raw database fields with a link to edit them in the admin panel.
-    - **Status**: USER VERIFICATION PENDING
-    - **Agent Testing Done**: Y
-    - **Which testing method agent to use?**: Screenshot tool was used to verify the admin banner and raw data rendering on the frontend.
+    - **Last item agent was working**: Fixing a JSON parsing error () in  when the user tries to run the Database Sync from the Admin Panel. 
+    - **Status**: IN PROGRESS
+    - **Agent Testing Done**: N
+    - **Which testing method agent to use?**: Frontend testing agent / Screenshot tool (after verifying sync logic works).
     - **User Testing Done**: N
 
-**All Pending/In progress Issue list**:  
-*(No high-priority bugs are currently active; the app is in a stable, fully-synced state)*
-  - Issue 1: Retest Frontend API Fetch Stability (P2)
-     - **Attempted fixes**: Agent fixed a body stream already read JSON error in  and  by ensuring  is only parsed once per request.
-     - **Next debug checklist**: Monitor console logs during login/logout and subscription flows to ensure no dual-parsing of JSON responses occurs.
-     - **Why fix this issue and what will be achieved with the fix?**: Ensures stable session management and data loading.
-     - **Status**: TESTING PENDING (Self-tested by agent, but good to keep an eye on)
-     - **Is recurring issue?**: Y (Fetch/JSON parsing issues have popped up twice)
-     - **Should Test frontend/backend/both after fix?**: Frontend
+**All Pending/In progress Issue list**:
+  - Issue 1: Double JSON Parsing Error in Admin Sync (P0)
+     - **Attempted fixes**: The agent just opened  to investigate but context ended before a fix was applied.
+     - **Next debug checklist**: Check  around lines 90-110 (the fetch call to sync endpoints). Look for multiple  calls within  or  blocks. Assign  to a variable once and use that variable.
+     - **Why fix this issue and what will be achieved with the fix?**: It completely blocks the Admin from syncing the newly deployed production local database with the Cloud MongoDB source.
+     - **Status**: IN PROGRESS
+     - **Is recurring issue?**: Y (This exact pattern happened previously in ).
+     - **Should Test frontend/backend/both after fix?**: Frontend.
+     - **Blocked on other issue**: None.
 
 **In progress Task List**:
-*(None - Agent successfully completed all user requests in the session)*
+*(No other active development tasks besides the immediate bug fix mentioned above)*
 
 **Upcoming and Future Tasks**
-    - Phase 5: Complete Stripe Payment Checkout Flow for the Credit System (P1) - Ensure users can actually buy the 50/200/500 credit packages via Stripe checkout. (Currently Simulated).
-    - Phase 6: Private API + API key management (P1) - Let premium users generate API keys with request rate limits.
-    - Future: Advanced Search Engine Migration (P2) - Elasticsearch integration for fast fuzzy search on the local setup.
+    - Phase 5: Complete Stripe Payment Checkout Flow for the Credit System & API Subscriptions (P1) - Bind API plans to recurring Stripe payments.
+    - Feature: Dynamic SEO Templates & Admin Controls (P2) - Possibility from Admin to set index/noindex on page types, and define dynamic Title/Description templates (e.g., ). *Discussed in this session but postponed.*
+    - Feature: AI SEO Text Generation (P2) - Hybrid approach: Smart templates for most companies, AI-generated descriptions for premium/top companies.
+    - Feature: CSV/JSON Data Export (P3).
 
 **Completed work in this session**
-  - **Database Architecture Enforced**: App explicitly locked to read/write from Local MongoDB (). Cloud MongoDB () relegated strictly to sync source (DONE).
-  - **Direct Cloud-to-Local Sync**: Rewrote  to handle direct sync without a separate microservice. Synced 1.2M companies and 413K financial records successfully (DONE).
-  - **Local DB Performance Metrics**: Added ping/latency checks showing Local DB is ~500x faster than Cloud (DONE).
-  - **Frontend Bug Fixes**: Fixed  in Auth and Subscription contexts (DONE).
-  - **Admin Companies List Revamp**: Upgraded  to a wide table format with checkmarks for ANAF, BPI, TVA, and Balance (DONE).
-  - **Geo-Sorting**: Fixed homepage counties dropdown and sorted localități descending by company count (DONE).
-  - **CAEN Rev.2 Implementation**: Ran backend python script to import 615 codes and integrated descriptions into the frontend UI (DONE).
-  - **Single-Page Profiles**: Merged 'Overview', 'Financials', and 'Juridic' tabs into single, scrollable pages for both the Public Company Page and Admin Company Profile. Added full 85-field editing capability in Admin (DONE).
-  - **Admin View on Public Profile**: Added raw DB data dump to the bottom of public profiles when logged in as admin (DONE).
+  - **API Key Management System**: Backend routes (, ), rate limiting middleware, User UI (), and Admin UI () (DONE).
+  - **Admin API Key Overrides**: Allowed admins to manually generate keys for specific users and set custom rate limits (requests per day/month) (DONE).
+  - **Elasticsearch Integration**: Created , added backend integration (), and updated frontend Search Page to use fuzzy search (DONE).
+  - **Production Docker Setup**: Created a complete standalone production environment (, , custom Dockerfiles) mapping external ports safely (Backend -> 8002, Mongo -> 27099) alongside an existing dev environment (DONE).
+  - **Docker Build Fixes**: Resolved Node 20+ requirement conflicts,  module missing errors, and fixed  build-time injection for the React container (DONE).
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: MongoDB Atlas Search capability limitation.
-   - **Debug checklist**: Check if moving to Local MongoDB requires building text indexes manually, since Atlas Search isn't available locally. Currently using standard Regex queries.
-   - **Why to solve this issue and what will be achieved with this?**: Ensures fast search functionality on the local Docker environment for 1.2M records.
-   - **Should Test frontend/backend/both after fix**: Backend
-   - **Is recurring issue?**: N
+   *(None specifically outside of the recurring JSON issue)*
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: Double-reading JSON response in frontend ().
-  - Recurrence count: 1
-  - Status: RESOLVED (Ensure  is assigned to a variable and not called multiple times in  blocks).
+  - Issue recurrence in previous fork:  (or ).
+  - Recurrence count: 2 (Previously in Auth/Subscription context, now happening in ).
+  - Status: IN PROGRESS
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Architecture Rule: **The app ALWAYS runs on Local MongoDB for standard operations.** Cloud MongoDB is ONLY used as a reference point in the Admin Sync page to pull fresh data down to the local instance.
-- Editing Companies: Edits made in the Admin panel do not destroy raw data; they are saved as overrides to maintain data integrity.
+- **Production Architecture**: The app uses Nginx as a reverse proxy. The Frontend container must be built with  pointing to the host's actual IP/Domain, not , to avoid CORS/Network errors.
+- **Dual MongoDB logic**: Local DB () is the source of truth for the app. Cloud DB is ONLY used to pull data downward via the Sync function.
+- **Elasticsearch**: Runs in a separate container, handles fuzzy searching on 1.2M records to bypass MongoDB text-search limitations.
 
 **key DB schema**
   - : 
   - : 
-  - : 
 
 **changes in tech stack**
-  - Dropped the separate  microservice concept from the previous session. Syncing is now handled directly via FastApi endpoints in .
+  - Integrated **Elasticsearch**.
+  - Added **Nginx** for the production Docker setup.
 
 **All files of reference**
-  -  (Contains the massive sync logic and performance testers).
-  -  (Heavily modified to be a single scrollable page without tabs).
-  -  (Heavily modified to include full-field editing logic).
+  -  (Currently broken, needs JSON parsing fix).
+  - 
+  - 
+  - 
 
 **Areas that need refactoring**: 
--  is getting large (over 500 lines). The Geo routes (, etc.) and basic company public routes could be moved into dedicated files inside .
+- Ensure all frontend  calls follow a safe, standardized error-handling utility to permanently prevent the  recurrence.
 
 **key api endpoints**
-  -  (Triggers real-time sync from Cloud to Local)
-  -  (Returns sync progress and DB stats)
-  -  (Saves admin edits)
-  -  (Now sorted descending by company count)
+  -  (Currently failing on frontend parsing)
+  - 
+  - 
+  - 
 
 **Critical Info for New Agent**
-  - **Database Logic**: Never attempt to route frontend user traffic to the Cloud Database. All app functionality depends on the local database ().
-  - **CAEN Codes**: CAEN codes have already been successfully populated into the local DB via . Do not re-run unless local DB is wiped.
-  - **Admin Credentials**:  / 
+  - The user has deployed the application on their own local server using the generated Docker Compose files. 
+  - To test admin features, the user manually created an admin account:  / . 
+  - When making Frontend Dockerfile changes, remember the app currently relies on passing the IP explicitly via  during the  phase.
 
 **documents and test reports created in this job**
-  -  (Updated with Phase 5 completion notes)
+  - 
+  -  (API Keys testing)
+  - 
 
 **Last 10 User Messages and any pending HUMAN messages** 
- 1. (User) roll back la ultima comanda m-am referit la profilul public -> Agent rewrote the public  to remove tabs and make it a single page.
- 2. (User) In gestionare firme cand dau click pe o firma ar trebuii sa se deschida profilul iei din admin -> Agent confirmed this was already implemented via the previous step.
- 3. (User) Eu cand sunt logat ca admin afieazami toate informatiile firmei din profilul public -> Agent successfully appended the raw 85-field data dump to the bottom of the public  if the user has an admin token.
+ - *(User had immense trouble logging into the React app due to Docker port conflicts, cached JS files, and missing REACT_APP_BACKEND_URL args. Agent solved it by writing custom Dockerfiles and clearing cache.)*
+ - User successfully logged in with .
+ - User asked how to become admin. Agent provided a Current Mongosh Log ID:	69c64b2ea927e50e069c28ed
+Connecting to:		mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.8.1
+Using MongoDB:		7.0.31
+Using Mongosh:		2.8.1
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+
+To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
+You can opt-out by running the disableTelemetry() command.
+
+------
+   The server generated these startup warnings when booting
+   2026-03-27T09:17:28.544+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+   2026-03-27T09:17:29.668+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2026-03-27T09:17:29.668+00:00: You are running this process as the root user, which is not recommended
+   2026-03-27T09:17:29.668+00:00: Soft rlimits for open file descriptors too low
+------
+
+test>  script to set .
+ - User ran it and accessed the Admin panel.
+ - **Latest Message:** User set the Cloud MongoDB URL in the Admin DB Sync page, clicked sync, and reported: 
 
 **Project Health Check:**
-- Broken: None
-- Working: Sync logic, CAEN logic, Admin Overrides, Geo-sorting, Single-page profiles.
+- Broken: Database Sync Frontend ()
+- Mocked: Stripe checkout flows.
+- Working: API Keys, User Auth, Elasticsearch connections, Production Docker environment.
 
 **3rd Party Integrations** 
-	 •	Stripe (Payments) — requires User API Key. (Direct integration implemented).
+	 •	Stripe (Payments) — requires User API Key.
+     •  Elasticsearch — self-hosted via Docker.
 
 **Testing status**
-  - Testing agent used after significant changes: NO (Relied heavily on Screenshot tool and backend scripts due to UI-heavy single-page revisions).
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: None currently.
+  - Testing agent used after significant changes: YES (Tested the API keys thoroughly).
+  - Troubleshoot agent used after agent stuck in loop: NO.
+  - Test files created: None.
+  - Known regressions: Double JSON parse error in .
 
 **Credentials to test flow:**
-  - Email: 
-  - Pass: 
+  - Email:  (or  depending on DB state)
+  - Pass:  (or )
 
 **What agent forgot to execute**
-The agent completed all user requests successfully up to the final message. The codebase is in a stable, verified state. The next logical step is to consult the user or the PRD to move on to Stripe implementation or API Key generation.</analysis>
+The agent opened  to fix the final user-reported bug but did not have the context/turns left to apply the fix. This MUST be the first priority for the next agent. Also, the user's request for Dynamic SEO Title/Description templates (Phase 2) was scoped but not yet implemented.</analysis>

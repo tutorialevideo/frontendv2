@@ -42,13 +42,20 @@ const AdminSyncPage = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (res.ok) {
-        const data = await res.json();
+      // Parse JSON once - safe pattern
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        data = null;
+      }
+      
+      if (res.ok && data) {
         setSyncStatus(data);
         setError(null);
         return data;
       } else {
-        setError('Failed to fetch sync status');
+        setError(data?.detail || 'Failed to fetch sync status');
         return null;
       }
     } catch (err) {
@@ -100,6 +107,15 @@ const AdminSyncPage = () => {
         }
       });
 
+      // Parse JSON once and store the result
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // JSON parsing failed - likely empty response
+        data = {};
+      }
+
       if (res.ok) {
         // Start polling for status
         const pollInterval = setInterval(async () => {
@@ -117,8 +133,7 @@ const AdminSyncPage = () => {
           setSyncing(false);
         }, 60 * 60 * 1000);
       } else {
-        const data = await res.json();
-        alert(data.detail || 'Sync failed to start');
+        alert(data?.detail || 'Sync failed to start');
         setSyncing(false);
       }
     } catch (err) {
@@ -138,6 +153,15 @@ const AdminSyncPage = () => {
         }
       });
 
+      // Parse JSON once and store the result
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // JSON parsing failed - likely empty response
+        data = {};
+      }
+
       if (res.ok) {
         // Start polling for status
         const pollInterval = setInterval(async () => {
@@ -153,8 +177,7 @@ const AdminSyncPage = () => {
           setSyncing(false);
         }, 60 * 60 * 1000);
       } else {
-        const data = await res.json();
-        alert(data.detail || 'Sync failed');
+        alert(data?.detail || 'Sync failed');
         setSyncing(false);
       }
     } catch (err) {
