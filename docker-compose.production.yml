@@ -62,6 +62,7 @@ services:
     environment:
       - MONGO_URL=mongodb://mongodb:27017/mfirme_local
       - APP_MONGO_URL=mongodb://mongodb:27017/mfirme_app
+      - CLOUD_MONGO_URL=${CLOUD_MONGO_URL}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - SECRET_KEY=${SECRET_KEY:-mfirme_secret_key_change_in_production}
       - ENVIRONMENT=production
