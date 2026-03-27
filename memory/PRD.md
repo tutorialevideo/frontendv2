@@ -183,6 +183,12 @@ MongoDB:
    - Stores custom templates per page type
    - Audit logging for admin changes
 
+6. **JSON-LD Structured Data** ✅
+   - **HomePage**: WebSite schema + Organization schema + SearchAction
+   - **CompanyPage**: Organization/LocalBusiness schema cu adresă, CUI, contact
+   - **SearchPage**: ItemList schema cu rezultatele căutării
+   - Ajută Google să afișeze Rich Results în SERP
+
 ## Database Schema
 
 ### justportal (Read-Only)

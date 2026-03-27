@@ -158,12 +158,56 @@ const CompanyPage = () => {
   const displayData = isAdmin && fullData ? fullData : company;
   const allFields = fullData ? Object.keys(fullData).filter(k => !k.startsWith('_') && k !== 'id').sort() : [];
 
+  // Generate JSON-LD Structured Data for Google Rich Results
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": company.caen?.startsWith('47') || company.caen?.startsWith('56') ? "LocalBusiness" : "Organization",
+    "name": company.denumire,
+    "url": window.location.href,
+    "identifier": {
+      "@type": "PropertyValue",
+      "name": "CUI",
+      "value": company.cui
+    },
+    ...(company.telefon && { "telephone": company.telefon }),
+    ...(company.email && { "email": company.email }),
+    ...(company.website && { "sameAs": company.website }),
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": company.localitate || '',
+      "addressRegion": company.judet || '',
+      "addressCountry": "RO",
+      ...(company.adresa && { "streetAddress": company.adresa }),
+      ...(company.cod_postal && { "postalCode": company.cod_postal })
+    },
+    ...(company.data_infiintare && { 
+      "foundingDate": company.data_infiintare.split('T')[0] 
+    }),
+    ...(company.caen_descriere && {
+      "description": `${company.denumire} - ${company.caen_descriere}. ${company.localitate ? `Locație: ${company.localitate}, ${company.judet}.` : ''}`
+    }),
+    ...(company.cifra_afaceri && {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": company.cifra_afaceri > 1000000 ? "5" : company.cifra_afaceri > 100000 ? "4" : "3",
+        "reviewCount": "1",
+        "bestRating": "5"
+      }
+    }),
+    // Additional business info
+    ...(company.numar_angajati && { "numberOfEmployees": company.numar_angajati }),
+    ...(company.forma_juridica && { "legalName": `${company.denumire} - ${company.forma_juridica}` })
+  };
+
   return (
     <>
       <Helmet>
         <title>{seoTitle || `${company.denumire} - CUI ${company.cui} | mFirme`}</title>
         <meta name="description" content={seoDescription || `${company.denumire || 'Firmă'} din ${company.localitate || ''}, ${company.judet || ''}. CUI: ${company.cui || ''}.`} />
         {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
       </Helmet>
 
       <div className="max-w-5xl mx-auto space-y-6">

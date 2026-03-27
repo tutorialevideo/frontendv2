@@ -127,6 +127,30 @@ const SearchPage = ({ initialFilters = {} }) => {
     QUERY: query || 'toate firmele'
   });
 
+  // JSON-LD for Search Results
+  const searchResultsSchema = results.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": `Rezultate căutare: ${query || 'firme'}`,
+    "description": `${total} firme găsite pentru căutarea "${query || 'toate firmele'}"`,
+    "numberOfItems": results.length,
+    "itemListElement": results.slice(0, 10).map((company, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Organization",
+        "name": company.denumire,
+        "identifier": company.cui,
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": company.localitate || '',
+          "addressRegion": company.judet || '',
+          "addressCountry": "RO"
+        }
+      }
+    }))
+  } : null;
+
   return (
     <>
       {!isNested && (
@@ -134,6 +158,11 @@ const SearchPage = ({ initialFilters = {} }) => {
           <title>{seoTitle || `Căutare firme${query ? ` - ${query}` : ''} | mFirme`}</title>
           <meta name="description" content={seoDescription || `Rezultate căutare: ${query || 'toate companiile din România'}`} />
           {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
+          {searchResultsSchema && (
+            <script type="application/ld+json">
+              {JSON.stringify(searchResultsSchema)}
+            </script>
+          )}
         </Helmet>
       )}
 
