@@ -129,8 +129,15 @@ const AdminSyncPage = () => {
     setSyncing(true);
     setError(null);
     
+    const syncUrl = `${API_URL}/api/admin/sync/direct-sync`;
+    console.log('=== SYNC DEBUG ===');
+    console.log('API_URL:', API_URL);
+    console.log('Full sync URL:', syncUrl);
+    console.log('Token present:', !!token);
+    console.log('Token (first 20 chars):', token?.substring(0, 20) + '...');
+    
     try {
-      const response = await fetch(`${API_URL}/api/admin/sync/direct-sync`, {
+      const response = await fetch(syncUrl, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -138,31 +145,45 @@ const AdminSyncPage = () => {
         }
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       // Clone response status before parsing
       const isOk = response.ok;
       const statusCode = response.status;
       
-      // Parse JSON once
+      // Parse JSON once using text() to avoid stream issues
       let responseData = {};
+      let rawText = '';
       try {
-        const text = await response.text();
-        if (text) {
-          responseData = JSON.parse(text);
+        rawText = await response.text();
+        console.log('Raw response text:', rawText);
+        if (rawText) {
+          responseData = JSON.parse(rawText);
         }
       } catch (parseErr) {
-        console.warn('JSON parse error:', parseErr);
+        console.error('JSON parse error:', parseErr);
+        console.log('Raw text that failed to parse:', rawText);
       }
+
+      console.log('Parsed response data:', responseData);
 
       if (isOk) {
         // Sync started successfully - polling will be handled by useEffect
-        console.log('Sync started:', responseData);
+        console.log('✓ Sync started successfully:', responseData);
       } else {
         const errorMsg = responseData?.detail || `Sync failed (${statusCode})`;
+        console.error('✗ Sync failed:', errorMsg);
+        console.error('Full error response:', responseData);
         alert(errorMsg);
         setSyncing(false);
       }
     } catch (err) {
-      console.error('Sync error:', err);
+      console.error('=== NETWORK ERROR ===');
+      console.error('Error type:', err.name);
+      console.error('Error message:', err.message);
+      console.error('Full error:', err);
       alert('Error: ' + (err.message || 'Network error'));
       setSyncing(false);
     }

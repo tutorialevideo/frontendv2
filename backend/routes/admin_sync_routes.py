@@ -278,17 +278,37 @@ async def trigger_direct_sync(
     """
     global sync_state
     
+    logger.info("=== DIRECT SYNC REQUEST ===")
+    logger.info(f"Collection param: {collection}")
+    logger.info(f"Admin user: {admin_user.get('email', 'unknown')}")
+    
     if sync_state["is_running"]:
+        logger.warning("Sync already in progress")
         raise HTTPException(status_code=409, detail="Sync already in progress")
     
     cloud_db = get_cloud_db()
     local_db = get_local_db()
     
+    logger.info(f"Cloud DB available: {cloud_db is not None}")
+    logger.info(f"Local DB available: {local_db is not None}")
+    
+    # Check environment variable
+    import os
+    cloud_url = os.getenv("CLOUD_MONGO_URL")
+    logger.info(f"CLOUD_MONGO_URL set: {bool(cloud_url)}")
+    if cloud_url:
+        # Log only first 30 chars for security
+        logger.info(f"CLOUD_MONGO_URL starts with: {cloud_url[:30]}...")
+    
     if cloud_db is None:
-        raise HTTPException(status_code=400, detail="Cloud database not connected. Check CLOUD_MONGO_URL in .env")
+        error_msg = "Cloud database not connected. Add CLOUD_MONGO_URL to backend/.env file"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
     
     if local_db is None:
-        raise HTTPException(status_code=400, detail="Local database not connected")
+        error_msg = "Local database not connected. Check MONGO_URL in backend/.env"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Define collections to sync
     if collection:
