@@ -9,7 +9,7 @@ services:
     container_name: mfirme-mongodb
     restart: always
     ports:
-      - "27018:27017"
+      - "27099:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
