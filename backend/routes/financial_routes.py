@@ -701,6 +701,281 @@ async def get_admin_financial_dashboard(current_user = Depends(get_current_user)
     }
 
 
+@router.post("/admin/recalculate")
+async def recalculate_statistics(current_user = Depends(get_current_user)):
+    """
+    Recalculate and cache all financial statistics
+    This should be called after a database sync
+    """
+    app_db = get_app_db()
+    local_db = get_local_db()
+    
+    # Verify admin
+    user = await app_db.users.find_one({"email": current_user["email"]})
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    logger.info(f"Starting financial statistics recalculation by {user.get('email')}")
+    
+    try:
+        # Count total companies
+        total_firme = await local_db.firme.count_documents({})
+        firme_cu_date = await local_db.firme.count_documents({"mf_cifra_afaceri": {"$gt": 0}})
+        
+        # Overall statistics
+        overall_pipeline = [
+            {"$match": {"mf_cifra_afaceri": {"$gt": 0}}},
+            {
+                "$group": {
+                    "_id": None,
+                    "total_firme_cu_date": {"$sum": 1},
+                    "total_cifra_afaceri": {"$sum": "$mf_cifra_afaceri"},
+                    "total_profit": {"$sum": {"$ifNull": ["$mf_profit_net", 0]}},
+                    "total_angajati": {"$sum": {"$ifNull": ["$mf_numar_angajati", 0]}},
+                    "avg_cifra_afaceri": {"$avg": "$mf_cifra_afaceri"},
+                    "avg_profit": {"$avg": {"$ifNull": ["$mf_profit_net", 0]}},
+                    "firme_profit": {"$sum": {"$cond": [{"$gt": ["$mf_profit_net", 0]}, 1, 0]}},
+                    "firme_pierdere": {"$sum": {"$cond": [{"$lt": ["$mf_profit_net", 0]}, 1, 0]}},
+                    "total_active": {"$sum": {"$add": [
+                        {"$ifNull": ["$mf_active_circulante", 0]},
+                        {"$ifNull": ["$mf_active_imobilizate", 0]}
+                    ]}},
+                    "total_datorii": {"$sum": {"$ifNull": ["$mf_datorii", 0]}},
+                    "total_capitaluri": {"$sum": {"$ifNull": ["$mf_capitaluri_proprii", 0]}}
+                }
+            }
+        ]
+        
+        overall_result = await local_db.firme.aggregate(overall_pipeline).to_list(length=1)
+        overall_stats = overall_result[0] if overall_result else {}
+        
+        # Industry statistics (top 20)
+        industry_pipeline = [
+            {
+                "$match": {
+                    "mf_cifra_afaceri": {"$gt": 0},
+                    "$or": [
+                        {"anaf_cod_caen": {"$exists": True, "$ne": None}},
+                        {"caen": {"$exists": True, "$ne": None}}
+                    ]
+                }
+            },
+            {
+                "$addFields": {
+                    "caen_sector": {
+                        "$substr": [
+                            {"$ifNull": [{"$toString": "$anaf_cod_caen"}, {"$toString": "$caen"}]},
+                            0, 2
+                        ]
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$caen_sector",
+                    "total_firme": {"$sum": 1},
+                    "total_cifra_afaceri": {"$sum": "$mf_cifra_afaceri"},
+                    "total_profit": {"$sum": {"$ifNull": ["$mf_profit_net", 0]}},
+                    "total_angajati": {"$sum": {"$ifNull": ["$mf_numar_angajati", 0]}},
+                    "avg_cifra_afaceri": {"$avg": "$mf_cifra_afaceri"},
+                    "avg_profit": {"$avg": {"$ifNull": ["$mf_profit_net", 0]}},
+                    "avg_angajati": {"$avg": {"$ifNull": ["$mf_numar_angajati", 0]}}
+                }
+            },
+            {"$sort": {"total_cifra_afaceri": -1}},
+            {"$limit": 20}
+        ]
+        
+        industry_stats = await local_db.firme.aggregate(industry_pipeline).to_list(length=20)
+        
+        # County statistics (all)
+        county_pipeline = [
+            {
+                "$match": {
+                    "mf_cifra_afaceri": {"$gt": 0},
+                    "judet": {"$exists": True, "$ne": None, "$ne": ""}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$judet",
+                    "total_firme": {"$sum": 1},
+                    "total_cifra_afaceri": {"$sum": "$mf_cifra_afaceri"},
+                    "total_profit": {"$sum": {"$ifNull": ["$mf_profit_net", 0]}},
+                    "total_angajati": {"$sum": {"$ifNull": ["$mf_numar_angajati", 0]}},
+                    "avg_cifra_afaceri": {"$avg": "$mf_cifra_afaceri"}
+                }
+            },
+            {"$sort": {"total_cifra_afaceri": -1}}
+        ]
+        
+        county_stats = await local_db.firme.aggregate(county_pipeline).to_list(length=50)
+        
+        # Calculate aggregate indicators
+        total_ca = overall_stats.get('total_cifra_afaceri', 0) or 0
+        total_profit = overall_stats.get('total_profit', 0) or 0
+        total_active = overall_stats.get('total_active', 0) or 0
+        total_datorii = overall_stats.get('total_datorii', 0) or 0
+        total_capitaluri = overall_stats.get('total_capitaluri', 0) or 0
+        
+        aggregate_indicators = {
+            "marja_profit_nationala": safe_divide(total_profit, total_ca) * 100,
+            "rata_indatorare_nationala": safe_divide(total_datorii, total_active) * 100,
+            "roa_national": safe_divide(total_profit, total_active) * 100,
+            "roe_national": safe_divide(total_profit, total_capitaluri) * 100 if total_capitaluri > 0 else 0
+        }
+        
+        # Save to cache collection
+        cache_doc = {
+            "type": "financial_dashboard",
+            "total_firme": total_firme,
+            "firme_cu_date_financiare": firme_cu_date,
+            "overall": {
+                "total_firme_cu_date_financiare": overall_stats.get('total_firme_cu_date', 0),
+                "total_cifra_afaceri": total_ca,
+                "total_profit": total_profit,
+                "total_angajati": overall_stats.get('total_angajati', 0),
+                "total_active": total_active,
+                "total_datorii": total_datorii,
+                "total_capitaluri": total_capitaluri,
+                "media_cifra_afaceri": overall_stats.get('avg_cifra_afaceri', 0),
+                "media_profit": overall_stats.get('avg_profit', 0),
+                "firme_profitabile": overall_stats.get('firme_profit', 0),
+                "firme_in_pierdere": overall_stats.get('firme_pierdere', 0),
+                "rata_profitabilitate": safe_divide(overall_stats.get('firme_profit', 0), overall_stats.get('total_firme_cu_date', 1)) * 100
+            },
+            "aggregate_indicators": aggregate_indicators,
+            "top_industries": [
+                {
+                    "sector_caen": ind['_id'],
+                    "total_firme": ind['total_firme'],
+                    "total_cifra_afaceri": ind['total_cifra_afaceri'],
+                    "total_profit": ind['total_profit'],
+                    "total_angajati": ind['total_angajati'],
+                    "avg_cifra_afaceri": ind['avg_cifra_afaceri'],
+                    "marja_profit_medie": safe_divide(ind['total_profit'], ind['total_cifra_afaceri']) * 100
+                }
+                for ind in industry_stats
+            ],
+            "counties": [
+                {
+                    "judet": county['_id'],
+                    "total_firme": county['total_firme'],
+                    "total_cifra_afaceri": county['total_cifra_afaceri'],
+                    "total_profit": county['total_profit'],
+                    "total_angajati": county['total_angajati'],
+                    "media_cifra_afaceri": county['avg_cifra_afaceri']
+                }
+                for county in county_stats
+            ],
+            "calculated_at": datetime.now(timezone.utc),
+            "calculated_by": user.get('email')
+        }
+        
+        # Upsert the cache document
+        await app_db.financial_cache.update_one(
+            {"type": "financial_dashboard"},
+            {"$set": cache_doc},
+            upsert=True
+        )
+        
+        logger.info(f"Financial statistics recalculated: {firme_cu_date} companies with data")
+        
+        return {
+            "status": "success",
+            "message": f"Statistici recalculate cu succes pentru {firme_cu_date:,} firme cu date financiare",
+            "summary": {
+                "total_firme": total_firme,
+                "firme_cu_date_financiare": firme_cu_date,
+                "total_cifra_afaceri": total_ca,
+                "total_profit": total_profit,
+                "judete_analizate": len(county_stats),
+                "industrii_analizate": len(industry_stats)
+            },
+            "calculated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error recalculating statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Eroare la recalculare: {str(e)}")
+
+
+@router.get("/admin/dashboard/cached")
+async def get_cached_dashboard(current_user = Depends(get_current_user)):
+    """
+    Get cached financial dashboard (faster than live calculation)
+    """
+    app_db = get_app_db()
+    
+    # Verify admin
+    user = await app_db.users.find_one({"email": current_user["email"]})
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get cached data
+    cache = await app_db.financial_cache.find_one({"type": "financial_dashboard"})
+    
+    if not cache:
+        return {
+            "cached": False,
+            "message": "Nu există date în cache. Apasă 'Recalculează' pentru a genera statistici.",
+            "data": None
+        }
+    
+    cache.pop('_id', None)
+    
+    return {
+        "cached": True,
+        "calculated_at": cache.get('calculated_at'),
+        "calculated_by": cache.get('calculated_by'),
+        "data": cache
+    }
+
+
+@router.get("/admin/db-info")
+async def get_database_info(current_user = Depends(get_current_user)):
+    """
+    Get information about the current database state
+    """
+    app_db = get_app_db()
+    local_db = get_local_db()
+    
+    # Verify admin
+    user = await app_db.users.find_one({"email": current_user["email"]})
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get collection stats
+    total_firme = await local_db.firme.count_documents({})
+    firme_cu_mf = await local_db.firme.count_documents({"mf_cifra_afaceri": {"$exists": True}})
+    firme_cu_anaf = await local_db.firme.count_documents({"anaf_denumire": {"$exists": True}})
+    total_bilanturi = await local_db.bilanturi.count_documents({})
+    
+    # Get latest sync info
+    latest_firma = await local_db.firme.find_one(
+        {"mf_last_sync": {"$exists": True}},
+        sort=[("mf_last_sync", -1)]
+    )
+    
+    # Get cache info
+    cache = await app_db.financial_cache.find_one({"type": "financial_dashboard"})
+    
+    return {
+        "database": {
+            "total_firme": total_firme,
+            "firme_cu_date_mf": firme_cu_mf,
+            "firme_cu_date_anaf": firme_cu_anaf,
+            "total_bilanturi": total_bilanturi
+        },
+        "last_mf_sync": latest_firma.get('mf_last_sync') if latest_firma else None,
+        "cache": {
+            "exists": cache is not None,
+            "calculated_at": cache.get('calculated_at') if cache else None,
+            "firme_in_cache": cache.get('firme_cu_date_financiare') if cache else 0
+        }
+    }
+
+
 def generate_pdf_html(indicators: Dict) -> str:
     """Generate HTML template for PDF report"""
     company = indicators.get('company_info', {})

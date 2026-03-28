@@ -18,27 +18,41 @@ import AdminLayout from '../components/AdminLayout';
 const AdminFinancialDashboard = () => {
   const { token } = useAuth();
   const [dashboard, setDashboard] = useState(null);
+  const [dbInfo, setDbInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/financial/admin/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Fetch both dashboard and db info in parallel
+      const [dashboardRes, dbInfoRes] = await Promise.all([
+        fetch(`${API_URL}/api/financial/admin/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_URL}/api/financial/admin/db-info`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
       
-      const text = await response.text();
+      const dashboardText = await dashboardRes.text();
+      const dbInfoText = await dbInfoRes.text();
       
-      if (response.ok && text) {
-        const data = JSON.parse(text);
+      if (dashboardRes.ok && dashboardText) {
+        const data = JSON.parse(dashboardText);
         setDashboard(data);
         setError(null);
       } else {
-        const errorData = text ? JSON.parse(text) : {};
+        const errorData = dashboardText ? JSON.parse(dashboardText) : {};
         setError(errorData.detail || 'Eroare la încărcarea dashboard-ului');
+      }
+      
+      if (dbInfoRes.ok && dbInfoText) {
+        setDbInfo(JSON.parse(dbInfoText));
       }
     } catch (err) {
       setError('Eroare de rețea: ' + err.message);
@@ -46,6 +60,34 @@ const AdminFinancialDashboard = () => {
       setLoading(false);
     }
   }, [token, API_URL]);
+
+  const recalculateStatistics = async () => {
+    setRecalculating(true);
+    setSuccess(null);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/financial/admin/recalculate`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      
+      if (response.ok) {
+        setSuccess(`Statistici recalculate cu succes! ${data.summary?.firme_cu_date_financiare?.toLocaleString('ro-RO')} firme analizate.`);
+        // Refresh dashboard
+        await fetchDashboard();
+      } else {
+        setError(data.detail || 'Eroare la recalculare');
+      }
+    } catch (err) {
+      setError('Eroare: ' + err.message);
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -159,21 +201,89 @@ const AdminFinancialDashboard = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-2xl font-bold">Dashboard Financiar</h2>
             <p className="text-muted-foreground">
               Statistici agregate din baza de date ({formatNumber(overall?.total_firme_cu_date_financiare)} firme cu date financiare)
             </p>
           </div>
-          <button
-            onClick={fetchDashboard}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Actualizează
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchDashboard}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualizează
+            </button>
+            <button
+              onClick={recalculateStatistics}
+              disabled={recalculating}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+            >
+              {recalculating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Se recalculează...
+                </>
+              ) : (
+                <>
+                  <BarChart3 className="w-4 h-4" />
+                  Recalculează Statistici
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Database Info */}
+        {dbInfo && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-blue-600 mb-2">
+              <Building2 className="w-5 h-5" />
+              <span className="font-semibold">Informații Bază de Date</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Total firme:</span>
+                <span className="ml-2 font-semibold">{formatNumber(dbInfo.database?.total_firme)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Cu date MF:</span>
+                <span className="ml-2 font-semibold">{formatNumber(dbInfo.database?.firme_cu_date_mf)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Cu date ANAF:</span>
+                <span className="ml-2 font-semibold">{formatNumber(dbInfo.database?.firme_cu_date_anaf)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Bilanțuri:</span>
+                <span className="ml-2 font-semibold">{formatNumber(dbInfo.database?.total_bilanturi)}</span>
+              </div>
+            </div>
+            {dbInfo.cache?.calculated_at && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Ultimul calcul: {new Date(dbInfo.cache.calculated_at).toLocaleString('ro-RO')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Success/Error Alerts */}
+        {success && (
+          <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-600 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            {success}
+          </div>
+        )}
+        
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
 
         {/* Overall Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
