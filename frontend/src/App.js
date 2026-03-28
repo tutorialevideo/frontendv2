@@ -24,6 +24,7 @@ import ApiKeysPage from './pages/ApiKeysPage';
 import AdminApiKeysPage from './pages/AdminApiKeysPage';
 import AdminElasticsearchPage from './pages/AdminElasticsearchPage';
 import AdminSeoPage from './pages/AdminSeoPage';
+import AdminFinancialDashboard from './pages/AdminFinancialDashboard';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import NoCreditsModal from './components/NoCreditsModal';
@@ -60,6 +61,7 @@ function AppContent() {
           <Route path="/admin/api-keys" element={<AdminApiKeysPage />} />
           <Route path="/admin/elasticsearch" element={<AdminElasticsearchPage />} />
           <Route path="/admin/seo" element={<AdminSeoPage />} />
+          <Route path="/admin/financial" element={<AdminFinancialDashboard />} />
         </Routes>
       </main>
       {!isAdminRoute && <Footer />}

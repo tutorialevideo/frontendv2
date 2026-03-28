@@ -50,6 +50,7 @@ from routes.api_keys_routes import router as api_keys_router
 from routes.public_api_routes import router as public_api_router
 from routes.elasticsearch_routes import router as elasticsearch_router
 from routes.seo_routes import router as seo_router
+from routes.financial_routes import router as financial_router
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -65,6 +66,7 @@ app.include_router(api_keys_router)
 app.include_router(public_api_router)
 app.include_router(elasticsearch_router)
 app.include_router(seo_router)
+app.include_router(financial_router)
 
 @app.get("/api/health")
 async def health_check():

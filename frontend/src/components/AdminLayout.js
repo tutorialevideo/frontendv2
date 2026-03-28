@@ -35,7 +35,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Plăți', path: '/admin/payments', icon: DollarSign },
     { name: 'API Keys', path: '/admin/api-keys', icon: Key },
     { name: 'SEO', path: '/admin/seo', icon: FileText },
-    { name: 'Statistici', path: '/admin/stats', icon: BarChart3 },
+    { name: 'Analiză Financiară', path: '/admin/financial', icon: BarChart3 },
     { name: 'Audit Log', path: '/admin/audit', icon: ScrollText },
   ];
 

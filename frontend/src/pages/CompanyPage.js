@@ -7,6 +7,7 @@ import { useCredits } from '../contexts/CreditsContext';
 import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
 import FinancialChart from '../components/FinancialChart';
+import FinancialIndicators from '../components/FinancialIndicators';
 
 const CompanyPage = () => {
   const { slug } = useParams();
@@ -347,6 +348,15 @@ const CompanyPage = () => {
 
         {/* Financial Chart */}
         <FinancialChart cui={company.cui} />
+
+        {/* Financial Indicators - for accountants */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Analiză Financiară Detaliată
+          </h2>
+          <FinancialIndicators cui={company.cui} />
+        </div>
 
         {/* Main Content Grid */}
         <div className="grid md:grid-cols-2 gap-6">
