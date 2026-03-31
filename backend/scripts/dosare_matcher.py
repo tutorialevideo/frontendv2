@@ -181,6 +181,7 @@ class DosareMatcherImproved:
     def build_firma_index(self):
         """
         Construiește index-ul de firme pentru căutare rapidă
+        Include mai multe variații de denumire pentru matching mai bun
         """
         logger.info("Building firma index...")
         
@@ -198,29 +199,46 @@ class DosareMatcherImproved:
             # Cache by CUI
             self.firme_cache[cui] = firma
             
-            # Index by normalized name
+            # Index by multiple name variations
             for name_field in ['denumire', 'anaf_denumire', 'mf_denumire']:
                 name = firma.get(name_field)
-                if name:
-                    normalized = self.normalize_text(name)
-                    if normalized not in self.denumire_index:
-                        self.denumire_index[normalized] = []
-                    if cui not in self.denumire_index[normalized]:
-                        self.denumire_index[normalized].append(cui)
-                    
-                    # Also index the company name without suffix
-                    clean_name = self.extract_company_name(name)
-                    if clean_name and clean_name != normalized:
-                        if clean_name not in self.denumire_index:
-                            self.denumire_index[clean_name] = []
-                        if cui not in self.denumire_index[clean_name]:
-                            self.denumire_index[clean_name].append(cui)
+                if not name:
+                    continue
+                
+                # 1. Full normalized name
+                normalized = self.normalize_text(name)
+                self._add_to_index(normalized, cui)
+                
+                # 2. Clean company name (without SRL, SA, etc.)
+                clean_name = self.normalize_company_name(name)
+                if clean_name and clean_name != normalized:
+                    self._add_to_index(clean_name, cui)
+                
+                # 3. Without "SC" prefix if present
+                if normalized.startswith('sc '):
+                    self._add_to_index(normalized[3:], cui)
+                
+                # 4. First word(s) for partial matching
+                words = clean_name.split()
+                if len(words) >= 2:
+                    self._add_to_index(' '.join(words[:2]), cui)
+                if len(words) >= 1 and len(words[0]) >= 4:
+                    self._add_to_index(words[0], cui)
             
             count += 1
             if count % 100000 == 0:
                 logger.info(f"Indexed {count} companies...")
         
         logger.info(f"Firma index built: {len(self.firme_cache)} companies, {len(self.denumire_index)} name variations")
+    
+    def _add_to_index(self, name: str, cui: str):
+        """Helper to add name to index"""
+        if not name or len(name) < 2:
+            return
+        if name not in self.denumire_index:
+            self.denumire_index[name] = []
+        if cui not in self.denumire_index[name]:
+            self.denumire_index[name].append(cui)
     
     def find_firma_by_cui(self, cui: str) -> Optional[dict]:
         """
@@ -285,104 +303,192 @@ class DosareMatcherImproved:
     
     def extract_parti_from_dosar(self, dosar: dict) -> List[dict]:
         """
-        Extrage toate părțile din dosar
-        Adaptează această funcție la structura JSON-ului tău
+        Extrage toate părțile din dosar - adaptat pentru Portal JUST
+        Structură: { "parti": [{ "nume": "...", "calitateParte": "..." }] }
         """
         parti = []
         
-        # Câmpuri comune pentru părți în dosare Portal JUST
-        parti_fields = [
-            'parti', 'partile', 'parties',
-            'reclamant', 'reclamanti', 'plaintiff', 'plaintiffs',
-            'parat', 'parati', 'pârât', 'pârâți', 'defendant', 'defendants',
-            'intervenient', 'intervenienti',
-            'creditor', 'creditori',
-            'debitor', 'debitori',
-            'contestator', 'contestatori',
-            'intimat', 'intimati',
-            'apelant', 'apelanti',
-            'recurent', 'recurenti',
-            'petent', 'petenti',
-        ]
-        
-        for field in parti_fields:
-            value = dosar.get(field)
-            if value:
-                if isinstance(value, list):
-                    for item in value:
-                        if isinstance(item, dict):
-                            parti.append(item)
-                        elif isinstance(item, str):
-                            parti.append({"nume": item, "rol": field})
-                elif isinstance(value, dict):
-                    parti.append(value)
-                elif isinstance(value, str):
-                    # Parse string to extract multiple parties
-                    for part in re.split(r'[,;]|\s+si\s+|\s+și\s+', value):
-                        part = part.strip()
-                        if part and len(part) > 3:
-                            parti.append({"nume": part, "rol": field})
-        
-        # Verifică și în sub-obiecte
-        for key, value in dosar.items():
-            if isinstance(value, dict):
-                nested_parti = self.extract_parti_from_dosar(value)
-                parti.extend(nested_parti)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict):
-                        # Check if this looks like a party
-                        if any(k in str(item.keys()).lower() for k in ['nume', 'name', 'denumire', 'parte', 'party']):
-                            parti.append(item)
+        # Direct extraction from 'parti' array
+        if 'parti' in dosar and isinstance(dosar['parti'], list):
+            for parte in dosar['parti']:
+                if isinstance(parte, dict) and 'nume' in parte:
+                    parti.append({
+                        "nume": parte.get('nume', ''),
+                        "rol": parte.get('calitateParte', ''),
+                        "is_firma": self.is_company_name(parte.get('nume', ''))
+                    })
         
         return parti
+    
+    def is_company_name(self, name: str) -> bool:
+        """
+        Verifică dacă un nume este o firmă (SRL, SA, PFA, etc.)
+        """
+        if not name:
+            return False
+        
+        name_upper = name.upper()
+        
+        # Indicatori de firmă
+        company_indicators = [
+            'S.R.L', 'SRL', 'S.R.L.', 
+            'S.A.', 'S.A', 'SA',
+            'S.C.', 'S.C', 'SC',
+            'P.F.A', 'PFA', 'P.F.A.',
+            'I.I.', 'II', 'I.F.', 'IF',
+            'S.N.C', 'SNC', 'S.C.S', 'SCS', 'S.C.A', 'SCA',
+            'O.N.G', 'ONG', 'ASOCIATIA', 'ASOCIAȚIA', 'FUNDATIA', 'FUNDAȚIA',
+            'R.A.', 'RA', 'REGIA',
+            'COOP', 'COOPERATIVA',
+            'BANCA', 'BANK',
+            'COMPANIA', 'COMPANY', 'SOCIETATE',
+            'GRUP', 'GROUP', 'HOLDING',
+            'LTD', 'LLC', 'GMBH', 'INC',
+        ]
+        
+        for indicator in company_indicators:
+            if indicator in name_upper:
+                return True
+        
+        return False
+    
+    def normalize_company_name(self, name: str) -> str:
+        """
+        Normalizează numele firmei pentru matching
+        "S.C. S.O.S. UTILAJE CO S.R.L." -> "sos utilaje co"
+        """
+        if not name:
+            return ""
+        
+        # Start with basic normalization
+        name = self.normalize_text(name)
+        
+        # Remove common prefixes
+        prefixes_to_remove = [
+            'sc ', 's c ', 'societatea comerciala ', 'societatea ',
+        ]
+        for prefix in prefixes_to_remove:
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+        
+        # Remove common suffixes (forma juridică)
+        suffixes_to_remove = [
+            ' srl', ' s r l', ' sa', ' s a', ' pfa', ' p f a',
+            ' ii', ' i i', ' if', ' i f', ' snc', ' s n c',
+            ' scs', ' s c s', ' sca', ' s c a',
+            ' ra', ' r a', ' coop', ' cooperativa',
+            ' ong', ' asociatia', ' fundatia',
+            ' ltd', ' llc', ' gmbh', ' inc',
+        ]
+        for suffix in suffixes_to_remove:
+            if name.endswith(suffix):
+                name = name[:-len(suffix)]
+        
+        # Remove extra whitespace
+        name = ' '.join(name.split())
+        
+        return name.strip()
     
     def match_parte(self, parte: dict) -> List[Tuple[dict, float, str]]:
         """
         Încearcă să facă match pentru o parte din dosar
         Returnează lista de (firma, score, match_type)
+        
+        Îmbunătățiri:
+        - Skip persoane fizice (nu sunt firme)
+        - Normalizare avansată pentru denumiri
+        - Multiple strategii de matching
         """
         matches = []
         
-        # Extrage informații din parte
-        nume = parte.get('nume') or parte.get('name') or parte.get('denumire') or ''
-        cui = parte.get('cui') or parte.get('cif') or parte.get('cod_fiscal') or ''
+        nume = parte.get('nume', '')
+        is_firma = parte.get('is_firma', False)
         
-        # Încearcă mai întâi match pe CUI
-        if cui:
-            firma = self.find_firma_by_cui(cui)
-            if firma:
-                matches.append((firma, 1.0, 'cui_exact'))
-                self.stats["match_by_cui"] += 1
-                return matches
-        
-        # Extrage CUI din text
-        text_fields = [str(v) for v in parte.values() if v]
-        full_text = ' '.join(text_fields)
-        extracted_cuis = self.extract_cui_from_text(full_text)
-        
-        for extracted_cui in extracted_cuis:
-            firma = self.find_firma_by_cui(extracted_cui)
-            if firma:
-                matches.append((firma, 0.95, 'cui_extracted'))
-                self.stats["match_by_cui"] += 1
-        
-        if matches:
+        # Skip dacă nu e firmă (persoană fizică)
+        if not is_firma:
+            logger.debug(f"Skipping non-company: {nume}")
             return matches
         
-        # Match pe nume
-        if nume:
-            name_matches = self.find_firma_by_name(nume, min_score=0.80)
-            for firma, score in name_matches[:3]:  # Top 3
-                match_type = 'name_exact' if score >= 0.98 else 'name_fuzzy'
-                matches.append((firma, score, match_type))
-                
-                if score >= 0.98:
-                    self.stats["match_by_name"] += 1
-                else:
-                    self.stats["match_by_fuzzy"] += 1
+        # Normalizează numele firmei
+        nume_normalized = self.normalize_company_name(nume)
+        nume_full_normalized = self.normalize_text(nume)
         
-        return matches
+        logger.debug(f"Matching: '{nume}' -> normalized: '{nume_normalized}'")
+        
+        # Strategia 1: Match exact pe denumire normalizată
+        if nume_normalized in self.denumire_index:
+            for cui in self.denumire_index[nume_normalized]:
+                firma = self.firme_cache.get(cui)
+                if firma:
+                    matches.append((firma, 1.0, 'exact_match'))
+                    self.stats["match_by_name"] += 1
+        
+        # Strategia 2: Match pe denumire completă normalizată
+        if not matches and nume_full_normalized in self.denumire_index:
+            for cui in self.denumire_index[nume_full_normalized]:
+                firma = self.firme_cache.get(cui)
+                if firma:
+                    matches.append((firma, 0.98, 'full_name_match'))
+                    self.stats["match_by_name"] += 1
+        
+        # Strategia 3: Match pe cuvintele principale
+        if not matches:
+            words = nume_normalized.split()
+            if len(words) >= 2:
+                # Încearcă primele 2 cuvinte
+                two_words = ' '.join(words[:2])
+                if two_words in self.denumire_index:
+                    for cui in self.denumire_index[two_words]:
+                        firma = self.firme_cache.get(cui)
+                        if firma:
+                            # Verifică că nu e un false positive
+                            firma_name = self.normalize_company_name(firma.get('denumire', ''))
+                            score = self.fuzzy_match_score(nume_normalized, firma_name)
+                            if score >= 0.7:
+                                matches.append((firma, score, 'partial_match'))
+                                self.stats["match_by_fuzzy"] += 1
+        
+        # Strategia 4: Fuzzy matching (mai lent, folosit doar dacă nu avem match)
+        if not matches and len(nume_normalized) >= 5:
+            candidates = []
+            name_words = set(nume_normalized.split())
+            
+            # Caută prin index pentru candidați cu cuvinte comune
+            for indexed_name, cuis in self.denumire_index.items():
+                if len(indexed_name) < 3:
+                    continue
+                    
+                indexed_words = set(indexed_name.split())
+                common_words = name_words & indexed_words
+                
+                # Trebuie să aibă cel puțin un cuvânt comun semnificativ
+                if common_words and any(len(w) >= 4 for w in common_words):
+                    score = self.fuzzy_match_score(nume_normalized, indexed_name)
+                    if score >= 0.75:
+                        for cui in cuis:
+                            candidates.append((cui, score, indexed_name))
+            
+            # Sortează și ia top 3
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            seen_cuis = set()
+            for cui, score, matched_name in candidates[:5]:
+                if cui not in seen_cuis:
+                    firma = self.firme_cache.get(cui)
+                    if firma:
+                        matches.append((firma, score, 'fuzzy_match'))
+                        self.stats["match_by_fuzzy"] += 1
+                        seen_cuis.add(cui)
+        
+        # Deduplicate matches
+        unique_matches = []
+        seen_cuis = set()
+        for firma, score, match_type in matches:
+            cui = str(firma.get('cui', ''))
+            if cui not in seen_cuis:
+                unique_matches.append((firma, score, match_type))
+                seen_cuis.add(cui)
+        
+        return sorted(unique_matches, key=lambda x: x[1], reverse=True)
     
     def process_dosar(self, dosar: dict) -> dict:
         """
@@ -530,6 +636,73 @@ class DosareMatcherImproved:
             print(f"\nNu s-a găsit firma pentru CUI {cui}")
         
         return firma
+    
+    def test_match_name(self, name: str):
+        """
+        Testează matching pentru o denumire de firmă
+        """
+        self.build_firma_index()
+        
+        print(f"\nTest matching pentru: '{name}'")
+        print(f"Normalizat: '{self.normalize_company_name(name)}'")
+        print(f"Este firmă: {self.is_company_name(name)}")
+        print("-" * 50)
+        
+        # Simulăm o parte de dosar
+        parte = {
+            "nume": name,
+            "rol": "test",
+            "is_firma": self.is_company_name(name)
+        }
+        
+        matches = self.match_parte(parte)
+        
+        if matches:
+            print(f"Găsite {len(matches)} rezultate:\n")
+            for i, (firma, score, match_type) in enumerate(matches, 1):
+                print(f"  {i}. {firma.get('denumire')}")
+                print(f"     CUI: {firma.get('cui')}")
+                print(f"     Județ: {firma.get('judet')}")
+                print(f"     Scor: {score:.2%}")
+                print(f"     Tip match: {match_type}")
+                print()
+        else:
+            print("Nu s-au găsit rezultate.")
+    
+    def test_match_file(self, file_path: str):
+        """
+        Testează matching pentru un fișier JSON specific
+        """
+        self.build_firma_index()
+        
+        print(f"\nProcesare fișier: {file_path}")
+        print("=" * 60)
+        
+        results = self.process_json_file(file_path)
+        
+        for result in results:
+            print(f"\nDosar: {result['numar_dosar']}")
+            print(f"Instanță: {result['instanta']}")
+            print(f"Obiect: {result['obiect']}")
+            print("-" * 40)
+            
+            if result['parti_gasite']:
+                print("Părți găsite:")
+                for parte in result['parti_gasite']:
+                    print(f"  • {parte['nume_original']} ({parte['rol']})")
+                    if parte['matches']:
+                        for match in parte['matches']:
+                            print(f"    → {match['denumire']} (CUI: {match['cui']}, scor: {match['score']:.0%}, tip: {match['match_type']})")
+                    else:
+                        print(f"    → Fără match (probabil persoană fizică)")
+            
+            if result['firme_matched']:
+                print(f"\nTotal firme identificate: {len(result['firme_matched'])}")
+            print()
+        
+        print(f"\nStatistici:")
+        for key, value in self.stats.items():
+            print(f"  {key}: {value}")
 
 
 def main():
@@ -539,7 +712,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Portal JUST Dosare Matcher')
-    parser.add_argument('--path', '-p', type=str, required=True,
+    parser.add_argument('--path', '-p', type=str,
                         help='Calea către directorul cu fișiere JSON')
     parser.add_argument('--output', '-o', type=str, default='dosare_matched.json',
                         help='Fișierul output (default: dosare_matched.json)')
@@ -549,8 +722,17 @@ def main():
                         help='Database name')
     parser.add_argument('--test-cui', type=str,
                         help='Testează matching pentru un CUI specific')
+    parser.add_argument('--test-name', type=str,
+                        help='Testează matching pentru o denumire de firmă')
+    parser.add_argument('--test-file', type=str,
+                        help='Testează matching pentru un fișier JSON specific')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='Mod verbose (afișează mai multe detalii)')
     
     args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
     
     matcher = DosareMatcherImproved(
         mongo_url=args.mongo_url,
@@ -559,8 +741,25 @@ def main():
     
     if args.test_cui:
         matcher.test_match_cui(args.test_cui)
-    else:
+    elif args.test_name:
+        matcher.test_match_name(args.test_name)
+    elif args.test_file:
+        matcher.test_match_file(args.test_file)
+    elif args.path:
         matcher.process_directory(args.path, args.output)
+    else:
+        print("Folosire:")
+        print("  1. Procesare director complet:")
+        print("     python dosare_matcher.py --path /cale/catre/dosare --output rezultate.json")
+        print("")
+        print("  2. Test pentru o denumire de firmă:")
+        print("     python dosare_matcher.py --test-name 'S.C. EXEMPLU SRL'")
+        print("")
+        print("  3. Test pentru un fișier JSON specific:")
+        print("     python dosare_matcher.py --test-file /cale/catre/dosar.json")
+        print("")
+        print("  4. Mod verbose pentru debugging:")
+        print("     python dosare_matcher.py --path /cale --verbose")
 
 
 if __name__ == "__main__":
