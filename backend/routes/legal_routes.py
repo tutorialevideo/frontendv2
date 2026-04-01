@@ -221,7 +221,8 @@ async def get_lichidatori_by_cui(cui: str):
 @router.get("/summary/{cui}")
 async def get_legal_summary(cui: str):
     """
-    Get a summary of all legal information for a company
+    Get a summary of all legal information for a company.
+    Reads pre-computed flags directly from firma document (no extra queries).
     """
     local_db = get_local_db()
     
@@ -230,34 +231,37 @@ async def get_legal_summary(cui: str):
     
     cui_clean = cui.replace('RO', '').replace(' ', '').strip()
     
-    # Find firma
+    # Find firma - flags are pre-computed on the document
     firma = await local_db.firme.find_one(
         {"$or": [{"cui": cui_clean}, {"cui": int(cui_clean) if cui_clean.isdigit() else cui_clean}]},
-        {"id": 1, "denumire": 1, "stare": 1}
+        {"_id": 0, "id": 1, "denumire": 1, "anaf_stare": 1,
+         "has_dosare": 1, "dosare_count": 1,
+         "has_bpi": 1, "bpi_count": 1,
+         "has_legal_issues": 1}
     )
     
-    firma_id = firma.get('id') if firma else None
+    if not firma:
+        return {
+            "cui": cui,
+            "firma_denumire": None,
+            "stare": "",
+            "dosare_count": 0,
+            "bpi_count": 0,
+            "in_insolventa": False,
+            "has_legal_issues": False
+        }
     
-    # Count dosare
-    dosare_count = 0
-    if firma_id:
-        dosare_count = await local_db.dosare.count_documents({"firma_id": firma_id})
-    
-    # Count BPI
-    bpi_count = await local_db.bpi_records.count_documents({
-        "$or": [{"cui": cui_clean}, {"cui": int(cui_clean) if cui_clean.isdigit() else cui_clean}]
-    })
-    
-    # Check if in insolvency (has BPI records or specific stare)
-    stare = firma.get('stare', '') if firma else ''
-    in_insolventa = bpi_count > 0 or 'insolvență' in stare.lower() if stare else False
+    dosare_count = firma.get('dosare_count', 0) or 0
+    bpi_count = firma.get('bpi_count', 0) or 0
+    stare = firma.get('anaf_stare', '') or ''
+    in_insolventa = bpi_count > 0 or 'insolvență' in stare.lower() or 'insolventa' in stare.lower()
     
     return {
         "cui": cui,
-        "firma_denumire": firma.get('denumire') if firma else None,
+        "firma_denumire": firma.get('denumire'),
         "stare": stare,
         "dosare_count": dosare_count,
         "bpi_count": bpi_count,
         "in_insolventa": in_insolventa,
-        "has_legal_issues": dosare_count > 0 or bpi_count > 0
+        "has_legal_issues": firma.get('has_legal_issues', False)
     }
