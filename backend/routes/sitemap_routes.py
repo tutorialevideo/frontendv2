@@ -165,9 +165,9 @@ async def sitemap_caen():
     db = get_local_db()
 
     pipeline = [
-        {"$match": {"anaf_cod_caen": {"$exists": True, "$ne": None, "$ne": ""}}},
+        {"$match": {"anaf_cod_caen": {"$exists": True, "$ne": None, "$ne": "", "$type": "string"}}},
         {"$group": {"_id": "$anaf_cod_caen", "count": {"$sum": 1}}},
-        {"$match": {"count": {"$gte": 5}}},
+        {"$match": {"count": {"$gte": 5}, "_id": {"$ne": None}}},
         {"$sort": {"count": -1}}
     ]
 
