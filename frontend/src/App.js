@@ -9,6 +9,7 @@ import CompanyPage from './pages/CompanyPage';
 import JudeteListPage from './pages/JudeteListPage';
 import JudetPage from './pages/JudetPage';
 import LocalitatePage from './pages/LocalitatePage';
+import CaenListPage from './pages/CaenListPage';
 import CaenPage from './pages/CaenPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -45,7 +46,8 @@ function AppContent() {
           <Route path="/judete" element={<JudeteListPage />} />
           <Route path="/judet/:judetSlug" element={<JudetPage />} />
           <Route path="/judet/:judetSlug/:localitateSlug" element={<LocalitatePage />} />
-          <Route path="/caen/:code" element={<CaenPage />} />
+          <Route path="/caen" element={<CaenListPage />} />
+          <Route path="/caen/:cod" element={<CaenPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/account" element={<AccountPage />} />

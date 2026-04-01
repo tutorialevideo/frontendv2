@@ -53,6 +53,7 @@ from routes.seo_routes import router as seo_router
 from routes.financial_routes import router as financial_router
 from routes.legal_routes import router as legal_router
 from routes.location_routes import router as location_router
+from routes.caen_routes import router as caen_router
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -71,6 +72,7 @@ app.include_router(seo_router)
 app.include_router(financial_router)
 app.include_router(legal_router)
 app.include_router(location_router)
+app.include_router(caen_router)
 
 @app.get("/api/health")
 async def health_check():

@@ -359,7 +359,11 @@ const CompanyPage = () => {
               <span className="text-xs text-muted-foreground">Cod CAEN</span>
             </div>
             <div className="text-xl font-semibold tracking-tight font-mono">
-              {displayData.anaf_cod_caen || 'N/A'}
+              {displayData.anaf_cod_caen ? (
+                <Link to={`/caen/${displayData.anaf_cod_caen}`} className="hover:text-primary transition-colors" data-testid="caen-link">
+                  {displayData.anaf_cod_caen}
+                </Link>
+              ) : 'N/A'}
             </div>
             {displayData.caen_denumire && (
               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{displayData.caen_denumire}</div>
@@ -474,7 +478,9 @@ const CompanyPage = () => {
                 <div>
                   <dt className="text-xs text-muted-foreground mb-1">Cod CAEN</dt>
                   <dd className="text-sm">
-                    <span className="font-mono font-medium">{displayData.anaf_cod_caen}</span>
+                    <Link to={`/caen/${displayData.anaf_cod_caen}`} className="font-mono font-medium hover:text-primary transition-colors">
+                      {displayData.anaf_cod_caen}
+                    </Link>
                     {displayData.caen_denumire && (
                       <span className="ml-2 text-muted-foreground">- {displayData.caen_denumire}</span>
                     )}
