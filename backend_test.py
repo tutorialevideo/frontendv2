@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 class mFirmeAPITester:
-    def __init__(self, base_url="https://firma-dosare.preview.emergentagent.com"):
+    def __init__(self, base_url="https://romania-firms-dev.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
