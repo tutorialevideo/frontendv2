@@ -330,6 +330,19 @@ MongoDB:
 - ✅ Elasticsearch integration for fuzzy search (Faza 7)
 - ✅ Dynamic SEO Templates with admin control (Faza 8)
 
+### Session 9 - Legal Info Integration
+**Date: February 2026**
+
+#### Completed Features:
+1. **LegalInfo Component on CompanyPage** ✅
+   - Integrated `LegalInfo.js` into `CompanyPage.js` under Financial Indicators section
+   - Displays Dosare (Portal JUST) and BPI (Buletinul Procedurilor de Insolvență) data
+   - Shows "Fără probleme juridice" for clean companies
+   - Color-coded alerts: red for insolvency, amber for legal issues, green for clean
+   - Expandable court case details with parties, hearings
+   - Backend: 4 API endpoints (`/api/legal/summary`, `/api/legal/dosare`, `/api/legal/bpi`, `/api/legal/lichidatori`)
+   - Testing: 100% pass rate (16/16 backend tests + all frontend tests)
+
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently simulated)
 - [ ] Complete Stripe payment flow verification for subscriptions
