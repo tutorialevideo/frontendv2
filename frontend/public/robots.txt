@@ -1,19 +1,19 @@
 User-agent: *
 Allow: /
 Allow: /firma/
-Allow: /search
+Allow: /judet/
 Allow: /judete
-Allow: /topuri
-
+Allow: /caen/
+Allow: /caen
+Allow: /search
 Disallow: /admin/
 Disallow: /api/
-Disallow: /login
-Disallow: /register
-Disallow: /profile
-Disallow: /api-keys
+Disallow: /account/
 
-# Sitemap
 Sitemap: https://mfirme.ro/sitemap.xml
 
-# Crawl-delay (optional, pentru a nu supraîncărca serverul)
+# Pe productie, configurati nginx:
+# location = /sitemap.xml { proxy_pass http://backend:8001/api/sitemap.xml; }
+# location ~ ^/sitemap-(.+)\.xml$ { proxy_pass http://backend:8001/api/sitemap-$1.xml; }
+
 Crawl-delay: 1

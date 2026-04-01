@@ -19,6 +19,9 @@ router = APIRouter(prefix="/api/sitemap", tags=["sitemap"])
 SITE_URL = "https://mfirme.ro"
 MAX_URLS_PER_SITEMAP = 45000
 
+# Clean sitemap paths (at domain root level)
+SITEMAP_BASE = f"{SITE_URL}"
+
 
 def make_slug(text):
     if not text:
@@ -60,12 +63,12 @@ async def sitemap_index():
         lastmod = status['last_generated'].strftime('%Y-%m-%d')
 
     sitemaps = []
-    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/api/sitemap/static.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
-    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/api/sitemap/judete.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
-    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/api/sitemap/caen.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
+    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/sitemap-static.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
+    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/sitemap-judete.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
+    sitemaps.append(f'  <sitemap><loc>{SITE_URL}/sitemap-caen.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
 
     for i in range(1, company_pages + 1):
-        sitemaps.append(f'  <sitemap><loc>{SITE_URL}/api/sitemap/companies-{i}.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
+        sitemaps.append(f'  <sitemap><loc>{SITE_URL}/sitemap-companies-{i}.xml</loc><lastmod>{lastmod}</lastmod></sitemap>')
 
     xml = f'''<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

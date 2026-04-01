@@ -71,40 +71,45 @@ const AdminSitemapPage = () => {
   const sitemapFiles = [
     {
       name: 'Sitemap Index',
-      path: '/api/sitemap/index.xml',
+      path: '/api/sitemap.xml',
       icon: Globe,
       description: 'Index principal - listeaza toate sub-sitemap-urile',
+      prodUrl: '/sitemap.xml',
       count: stats.total_sitemaps || 0,
       countLabel: 'sub-sitemaps'
     },
     {
       name: 'Pagini Statice',
-      path: '/api/sitemap/static.xml',
+      path: '/api/sitemap-static.xml',
       icon: FileText,
       description: 'Homepage, cautare, judete, CAEN',
+      prodUrl: '/sitemap-static.xml',
       count: 4,
       countLabel: 'pagini'
     },
     {
       name: 'Judete & Localitati',
-      path: '/api/sitemap/judete.xml',
+      path: '/api/sitemap-judete.xml',
       icon: MapPin,
       description: 'Toate judetele si localitatile cu 10+ firme',
+      prodUrl: '/sitemap-judete.xml',
       count: (stats.judete || 0) + (stats.localitati || 0),
       countLabel: 'URL-uri'
     },
     {
       name: 'Coduri CAEN',
-      path: '/api/sitemap/caen.xml',
+      path: '/api/sitemap-caen.xml',
       icon: Briefcase,
       description: 'Toate codurile CAEN cu firme active',
+      prodUrl: '/sitemap-caen.xml',
       count: stats.caen_codes || 0,
       countLabel: 'URL-uri'
     },
     ...Array.from({ length: stats.company_pages || 0 }, (_, i) => ({
       name: `Firme (pagina ${i + 1})`,
-      path: `/api/sitemap/companies-${i + 1}.xml`,
+      path: `/api/sitemap-companies-${i + 1}.xml`,
       icon: Building2,
+      prodUrl: `/sitemap-companies-${i + 1}.xml`,
       description: i === 0
         ? `Firme 1 - ${Math.min(stats.urls_per_page || 45000, stats.total_active_companies || 0).toLocaleString('ro-RO')}`
         : `Firme ${(i * (stats.urls_per_page || 45000) + 1).toLocaleString('ro-RO')} - ${Math.min((i + 1) * (stats.urls_per_page || 45000), stats.total_active_companies || 0).toLocaleString('ro-RO')}`,
@@ -198,6 +203,9 @@ const AdminSitemapPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground hidden sm:block font-mono">
+                  {file.prodUrl || file.path}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {file.count.toLocaleString('ro-RO')} {file.countLabel}
                 </span>
@@ -223,7 +231,7 @@ const AdminSitemapPage = () => {
         <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
           <li>Deschide <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Search Console</a></li>
           <li>Mergi la <strong>Sitemaps</strong> din meniul lateral</li>
-          <li>Adauga URL-ul sitemap index: <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">https://mfirme.ro/api/sitemap/index.xml</code></li>
+          <li>Adauga URL-ul sitemap index: <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">https://mfirme.ro/sitemap.xml</code></li>
           <li>Google va descoperi automat toate sub-sitemap-urile ({stats.total_sitemaps || 0} fisiere)</li>
           <li>Apasa <strong>"Actualizeaza Sitemap"</strong> de fiecare data cand adaugi date noi</li>
         </ol>

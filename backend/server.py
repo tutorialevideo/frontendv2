@@ -76,6 +76,34 @@ app.include_router(location_router)
 app.include_router(caen_router)
 app.include_router(sitemap_router)
 
+# Clean sitemap URLs at domain root level (alias routes)
+# These are served by the same backend endpoints but at /api/sitemap.xml etc.
+# Production nginx proxies /sitemap*.xml -> backend
+from routes.sitemap_routes import (
+    sitemap_index, sitemap_static, sitemap_judete, 
+    sitemap_caen, sitemap_companies
+)
+
+@app.get("/api/sitemap.xml")
+async def sitemap_xml_root():
+    return await sitemap_index()
+
+@app.get("/api/sitemap-static.xml")
+async def sitemap_static_root():
+    return await sitemap_static()
+
+@app.get("/api/sitemap-judete.xml")
+async def sitemap_judete_root():
+    return await sitemap_judete()
+
+@app.get("/api/sitemap-caen.xml")
+async def sitemap_caen_root():
+    return await sitemap_caen()
+
+@app.get("/api/sitemap-companies-{page_num}.xml")
+async def sitemap_companies_root(page_num: int):
+    return await sitemap_companies(page_num)
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "mFirme API is running"}
