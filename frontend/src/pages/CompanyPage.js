@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
-import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart, FileText, DollarSign, Activity, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart, FileText, DollarSign, Activity, Shield, ChevronDown, ChevronUp, Scale } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCredits } from '../contexts/CreditsContext';
 import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
 import FinancialChart from '../components/FinancialChart';
 import FinancialIndicators from '../components/FinancialIndicators';
+import LegalInfo from '../components/LegalInfo';
 
 const CompanyPage = () => {
   const { slug } = useParams();
@@ -356,6 +357,15 @@ const CompanyPage = () => {
             Analiză Financiară Detaliată
           </h2>
           <FinancialIndicators cui={company.cui} />
+        </div>
+
+        {/* Legal Info - Dosare & BPI */}
+        <div className="mt-8" data-testid="legal-info-section">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Scale className="w-5 h-5 text-primary" />
+            Informații Juridice
+          </h2>
+          <LegalInfo cui={company.cui} />
         </div>
 
         {/* Main Content Grid */}
