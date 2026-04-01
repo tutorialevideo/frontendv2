@@ -54,6 +54,7 @@ from routes.financial_routes import router as financial_router
 from routes.legal_routes import router as legal_router
 from routes.location_routes import router as location_router
 from routes.caen_routes import router as caen_router
+from routes.sitemap_routes import router as sitemap_router
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -73,6 +74,7 @@ app.include_router(financial_router)
 app.include_router(legal_router)
 app.include_router(location_router)
 app.include_router(caen_router)
+app.include_router(sitemap_router)
 
 @app.get("/api/health")
 async def health_check():
@@ -530,23 +532,6 @@ async def get_platform_stats():
         "counties": judete_count,
         "with_financials": with_financials
     }
-
-@app.get("/api/seo/sitemap-index.xml")
-async def sitemap_index():
-    """Generate sitemap index"""
-    xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap>
-    <loc>https://mfirme.ro/sitemap-static.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>https://mfirme.ro/sitemap-judete.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>https://mfirme.ro/sitemap-companies-1.xml</loc>
-  </sitemap>
-</sitemapindex>'''
-    return Response(content=xml, media_type="application/xml")
 
 if __name__ == "__main__":
     import uvicorn

@@ -26,6 +26,7 @@ import ApiKeysPage from './pages/ApiKeysPage';
 import AdminApiKeysPage from './pages/AdminApiKeysPage';
 import AdminElasticsearchPage from './pages/AdminElasticsearchPage';
 import AdminSeoPage from './pages/AdminSeoPage';
+import AdminSitemapPage from './pages/AdminSitemapPage';
 import AdminFinancialDashboard from './pages/AdminFinancialDashboard';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -65,6 +66,7 @@ function AppContent() {
           <Route path="/admin/api-keys" element={<AdminApiKeysPage />} />
           <Route path="/admin/elasticsearch" element={<AdminElasticsearchPage />} />
           <Route path="/admin/seo" element={<AdminSeoPage />} />
+          <Route path="/admin/seo/sitemap" element={<AdminSitemapPage />} />
           <Route path="/admin/financial" element={<AdminFinancialDashboard />} />
         </Routes>
       </main>

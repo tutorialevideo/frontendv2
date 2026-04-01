@@ -16,7 +16,9 @@ import {
   X,
   Home,
   Database,
-  Search
+  Search,
+  Globe,
+  ChevronDown
 } from 'lucide-react';
 
 const AdminLayout = ({ children }) => {
@@ -24,6 +26,7 @@ const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [seoOpen, setSeoOpen] = useState(location.pathname.startsWith('/admin/seo'));
 
   const navigationItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -34,9 +37,13 @@ const AdminLayout = ({ children }) => {
     { name: 'Abonamente', path: '/admin/subscriptions', icon: CreditCard },
     { name: 'Plăți', path: '/admin/payments', icon: DollarSign },
     { name: 'API Keys', path: '/admin/api-keys', icon: Key },
-    { name: 'SEO', path: '/admin/seo', icon: FileText },
     { name: 'Analiză Financiară', path: '/admin/financial', icon: BarChart3 },
     { name: 'Audit Log', path: '/admin/audit', icon: ScrollText },
+  ];
+
+  const seoSubItems = [
+    { name: 'SEO Templates', path: '/admin/seo' },
+    { name: 'Generator Sitemap', path: '/admin/seo/sitemap' },
   ];
 
   const handleLogout = () => {
@@ -115,6 +122,46 @@ const AdminLayout = ({ children }) => {
                 </Link>
               );
             })}
+
+            {/* SEO submenu */}
+            <div>
+              <button
+                onClick={() => setSeoOpen(!seoOpen)}
+                data-testid="admin-nav-seo"
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
+                  location.pathname.startsWith('/admin/seo')
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Globe className="w-5 h-5" />
+                  <span className="font-medium">SEO</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${seoOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {seoOpen && (
+                <div className="ml-4 mt-1 space-y-0.5">
+                  {seoSubItems.map((sub) => (
+                    <Link
+                      key={sub.path}
+                      to={sub.path}
+                      data-testid={`admin-nav-${sub.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      className={`flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                        location.pathname === sub.path
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                      onClick={() => {
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <button
