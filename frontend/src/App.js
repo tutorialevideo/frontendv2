@@ -6,6 +6,7 @@ import { CreditsProvider } from './contexts/CreditsContext';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import CompanyPage from './pages/CompanyPage';
+import JudeteListPage from './pages/JudeteListPage';
 import JudetPage from './pages/JudetPage';
 import LocalitatePage from './pages/LocalitatePage';
 import CaenPage from './pages/CaenPage';
@@ -41,8 +42,9 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/firma/:slug" element={<CompanyPage />} />
-          <Route path="/judet/:slug" element={<JudetPage />} />
-          <Route path="/localitate/:slug" element={<LocalitatePage />} />
+          <Route path="/judete" element={<JudeteListPage />} />
+          <Route path="/judet/:judetSlug" element={<JudetPage />} />
+          <Route path="/judet/:judetSlug/:localitateSlug" element={<LocalitatePage />} />
           <Route path="/caen/:code" element={<CaenPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

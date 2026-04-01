@@ -6,6 +6,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCredits } from '../contexts/CreditsContext';
 import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
+
+const makeSlug = (text) => {
+  if (!text) return '';
+  const diacritics = {'ş':'s','ș':'s','Ş':'S','Ș':'S','ţ':'t','ț':'t','Ţ':'T','Ț':'T','ă':'a','Ă':'A','â':'a','Â':'A','î':'i','Î':'I'};
+  let slug = text;
+  for (const [k, v] of Object.entries(diacritics)) slug = slug.split(k).join(v);
+  return slug.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
+};
 import FinancialChart from '../components/FinancialChart';
 import FinancialIndicators from '../components/FinancialIndicators';
 import LegalInfo from '../components/LegalInfo';
@@ -245,7 +253,19 @@ const CompanyPage = () => {
                 <span className="font-mono" data-testid="company-cui">CUI: {displayData.cui}</span>
                 <span className="flex items-center space-x-1">
                   <MapPin className="w-4 h-4" />
-                  <span data-testid="company-location">{displayData.localitate}, {displayData.judet}</span>
+                  <span data-testid="company-location">
+                    {displayData.localitate && (
+                      <Link to={`/judet/${makeSlug(displayData.judet)}/${makeSlug(displayData.localitate)}`} className="hover:text-primary hover:underline">
+                        {displayData.localitate}
+                      </Link>
+                    )}
+                    {displayData.localitate && displayData.judet && ', '}
+                    {displayData.judet && (
+                      <Link to={`/judet/${makeSlug(displayData.judet)}`} className="hover:text-primary hover:underline">
+                        {displayData.judet}
+                      </Link>
+                    )}
+                  </span>
                 </span>
                 {displayData.anaf_data_inregistrare && (
                   <span className="flex items-center space-x-1">
@@ -384,7 +404,13 @@ const CompanyPage = () => {
                     <>
                       {displayData.strada && `${displayData.strada} ${displayData.numar || ''}`}
                       {displayData.strada && <br />}
-                      {displayData.localitate}, {displayData.judet}
+                      {displayData.localitate && (
+                        <Link to={`/judet/${makeSlug(displayData.judet)}/${makeSlug(displayData.localitate)}`} className="hover:text-primary hover:underline">{displayData.localitate}</Link>
+                      )}
+                      {displayData.localitate && displayData.judet && ', '}
+                      {displayData.judet && (
+                        <Link to={`/judet/${makeSlug(displayData.judet)}`} className="hover:text-primary hover:underline">{displayData.judet}</Link>
+                      )}
                       {displayData.cod_postal && `, ${displayData.cod_postal}`}
                     </>
                   )}
