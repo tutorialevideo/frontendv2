@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
-from database import get_app_db, get_readonly_db
+from fastapi import APIRouter, HTTPException, Depends, Query
+from database import get_app_db, get_readonly_db, get_cloud_db
 from auth import get_current_user
 from models import (
     CompanySearchRequest, CompanyOverrideRequest, 
@@ -27,27 +27,13 @@ async def list_companies(
     skip: int = 0,
     limit: int = 50,
     q: str = "",
+    stare: str = Query(default="active", description="active | radiate | incomplete | all"),
     current_user = Depends(require_admin)
 ):
     """
-    List companies with pagination and key status indicators.
-    Returns: denumire, cui, judet, localitate, has_bilant, anaf_active, platitor_tva, has_bpi, cifra_afaceri
+    List companies with pagination, search and status filter.
+    stare: active (local DB), radiate/incomplete/all (cloud DB)
     """
-    readonly_db = get_readonly_db()
-    
-    # Build query
-    if q.strip():
-        if q.isdigit():
-            query = {"cui": q}
-        else:
-            query = {"denumire": {"$regex": q, "$options": "i"}}
-    else:
-        query = {}
-    
-    # Get total count
-    total = await readonly_db.firme.count_documents(query)
-    
-    # Get companies with projection for faster query
     projection = {
         "_id": 0,
         "cui": 1,
@@ -59,21 +45,81 @@ async def list_companies(
         "mf_platitor_tva": 1,
         "anaf_platitor_tva": 1,
         "anaf_stare_startswith_inregistrat": 1,
+        "anaf_stare": 1,
         "anaf_inactiv": 1,
         "has_bpi": 1
     }
-    
-    cursor = readonly_db.firme.find(query, projection).skip(skip).limit(limit)
-    
+
+    # Decide which DB to use
+    if stare == "active":
+        db = get_readonly_db()
+    else:
+        db = get_cloud_db()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Cloud database not available for non-active companies")
+
+    # Build base query
+    query = {}
+    if q.strip():
+        if q.isdigit():
+            query["cui"] = q
+        else:
+            query["denumire"] = {"$regex": q, "$options": "i"}
+
+    # Apply stare filter
+    if stare == "radiate":
+        query["anaf_stare_startswith_inregistrat"] = False
+    elif stare == "incomplete":
+        query["$or"] = [
+            {"mf_cifra_afaceri": None},
+            {"mf_an_bilant": None},
+            {"anaf_stare": None}
+        ]
+    elif stare == "all":
+        pass  # no extra filter
+
+    total = await db.firme.count_documents(query)
+    cursor = db.firme.find(query, projection).skip(skip).limit(limit)
+
     companies = []
     async for company in cursor:
         companies.append(company)
-    
+
     return {
         "companies": companies,
         "total": total,
         "skip": skip,
-        "limit": limit
+        "limit": limit,
+        "stare_filter": stare
+    }
+
+
+@router.get("/counts")
+async def get_company_counts(current_user = Depends(require_admin)):
+    """Get counts for each company category"""
+    local_db = get_readonly_db()
+    cloud_db = get_cloud_db()
+
+    active = await local_db.firme.count_documents({})
+
+    radiate = 0
+    total_cloud = 0
+    incomplete = 0
+    if cloud_db is not None:
+        total_cloud = await cloud_db.firme.count_documents({})
+        radiate = await cloud_db.firme.count_documents({"anaf_stare_startswith_inregistrat": False})
+        incomplete = await cloud_db.firme.count_documents({
+            "$or": [
+                {"mf_cifra_afaceri": None},
+                {"mf_an_bilant": None}
+            ]
+        })
+
+    return {
+        "active": active,
+        "radiate": radiate,
+        "incomplete": incomplete,
+        "total": total_cloud or active
     }
 
 
@@ -84,13 +130,19 @@ async def get_full_company_data(
 ):
     """
     Get ALL fields for a company - for admin editing.
-    Returns raw data + any existing overrides.
+    Searches local DB first, then cloud DB for radiate/inactive companies.
     """
     readonly_db = get_readonly_db()
     app_db = get_app_db()
     
-    # Get raw company data
+    # Try local first
     company = await readonly_db.firme.find_one({"cui": cui})
+    
+    # If not found locally, try cloud
+    if not company:
+        cloud_db = get_cloud_db()
+        if cloud_db is not None:
+            company = await cloud_db.firme.find_one({"cui": cui})
     
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")

@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  Filter
 } from 'lucide-react';
 
 const AdminCompaniesPage = () => {
@@ -34,15 +35,17 @@ const AdminCompaniesPage = () => {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+  const [stareFilter, setStareFilter] = useState('active');
+  const [counts, setCounts] = useState(null);
 
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
   const PAGE_SIZE = 50;
 
-  const loadCompanies = useCallback(async (searchTerm = '', pageNum = 1) => {
+  const loadCompanies = useCallback(async (searchTerm = '', pageNum = 1, filter = 'active') => {
     setLoading(true);
     try {
       const skip = (pageNum - 1) * PAGE_SIZE;
-      const res = await fetch(`${API_URL}/api/admin/companies/list?skip=${skip}&limit=${PAGE_SIZE}&q=${encodeURIComponent(searchTerm)}`, {
+      const res = await fetch(`${API_URL}/api/admin/companies/list?skip=${skip}&limit=${PAGE_SIZE}&q=${encodeURIComponent(searchTerm)}&stare=${filter}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -58,21 +61,43 @@ const AdminCompaniesPage = () => {
     }
   }, [API_URL, token]);
 
+  const loadCounts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/companies/counts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCounts(data);
+      }
+    } catch (error) {
+      console.error('Failed to load counts:', error);
+    }
+  }, [API_URL, token]);
+
   useEffect(() => {
     if (token) {
-      loadCompanies('', 1);
+      loadCompanies('', 1, 'active');
+      loadCounts();
     }
-  }, [token, loadCompanies]);
+  }, [token, loadCompanies, loadCounts]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    loadCompanies(searchQuery, 1);
+    loadCompanies(searchQuery, 1, stareFilter);
   };
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    loadCompanies(searchQuery, newPage);
+    loadCompanies(searchQuery, newPage, stareFilter);
+  };
+
+  const handleStareChange = (newStare) => {
+    setStareFilter(newStare);
+    setPage(1);
+    setSearchQuery('');
+    loadCompanies('', 1, newStare);
   };
 
   const loadFullCompanyData = async (cui) => {
@@ -319,7 +344,7 @@ const AdminCompaniesPage = () => {
       </div>
 
       {/* Search */}
-      <div className="bg-card border border-border rounded-xl p-4 mb-6">
+      <div className="bg-card border border-border rounded-xl p-4 mb-4">
         <form onSubmit={handleSearch} className="flex items-center gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -341,6 +366,45 @@ const AdminCompaniesPage = () => {
             Caută
           </button>
         </form>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card border border-border rounded-xl p-4 mb-6" data-testid="company-filters">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Filtrare după stare</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { key: 'active', label: 'Active', color: 'green', count: counts?.active },
+            { key: 'radiate', label: 'Radiate', color: 'red', count: counts?.radiate },
+            { key: 'incomplete', label: 'Date incomplete', color: 'amber', count: counts?.incomplete },
+            { key: 'all', label: 'Toate firmele', color: 'blue', count: counts?.total },
+          ].map(({ key, label, color, count }) => (
+            <button
+              key={key}
+              onClick={() => handleStareChange(key)}
+              data-testid={`filter-${key}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                stareFilter === key
+                  ? `bg-${color}-500/15 border-${color}-500/50 text-${color}-700`
+                  : 'border-border hover:bg-muted text-muted-foreground'
+              }`}
+              style={stareFilter === key ? {
+                backgroundColor: color === 'green' ? 'rgba(34,197,94,0.15)' : color === 'red' ? 'rgba(239,68,68,0.15)' : color === 'amber' ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.15)',
+                borderColor: color === 'green' ? 'rgba(34,197,94,0.5)' : color === 'red' ? 'rgba(239,68,68,0.5)' : color === 'amber' ? 'rgba(245,158,11,0.5)' : 'rgba(59,130,246,0.5)',
+                color: color === 'green' ? '#15803d' : color === 'red' ? '#b91c1c' : color === 'amber' ? '#92400e' : '#1d4ed8'
+              } : {}}
+            >
+              <span>{label}</span>
+              {count !== undefined && count !== null && (
+                <span className="px-1.5 py-0.5 rounded text-xs bg-black/5">
+                  {count.toLocaleString('ro-RO')}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Companies Table */}
@@ -418,8 +482,13 @@ const AdminCompaniesPage = () => {
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                           <CheckCircle className="w-3 h-3" />
                         </span>
+                      ) : company.anaf_stare ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700" title={company.anaf_stare}>
+                          <XCircle className="w-3 h-3" />
+                          <span className="max-w-[80px] truncate">{company.anaf_stare.split(' din ')[0]}</span>
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
                           <XCircle className="w-3 h-3" />
                         </span>
                       )}
