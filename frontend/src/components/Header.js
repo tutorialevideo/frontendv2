@@ -34,6 +34,9 @@ const Header = () => {
             <Link to="/judete" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-judete">
               Judete
             </Link>
+            <Link to="/caen" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-caen">
+              CAEN
+            </Link>
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-about">
               Despre
             </Link>
