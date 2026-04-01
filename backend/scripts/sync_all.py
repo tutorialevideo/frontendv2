@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Sync all collections from Atlas to local MongoDB - removes _id to avoid duplicates"""
+"""Sync all collections from Atlas to local MongoDB - handles duplicate keys"""
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne
+from pymongo.errors import BulkWriteError
 import os, time, sys
 from dotenv import load_dotenv
 load_dotenv()
@@ -27,33 +28,44 @@ async def sync_collection(cloud_db, local_db, col_name):
     
     log(f"{col_name}: START - dropping local and syncing {total:,} docs")
     
-    # Drop entire collection for clean start
+    # Drop entire collection for clean start (removes indexes too)
     await local_db[col_name].drop()
     
     synced = 0
+    skipped = 0
     batch = []
     cursor = cloud_db[col_name].find({}).batch_size(BATCH_SIZE)
     
     async for doc in cursor:
-        doc.pop('_id', None)  # Remove _id to avoid duplicate key errors
+        doc.pop('_id', None)
         batch.append(InsertOne(doc))
         if len(batch) >= BATCH_SIZE:
-            await local_db[col_name].bulk_write(batch, ordered=False)
-            synced += len(batch)
+            try:
+                result = await local_db[col_name].bulk_write(batch, ordered=False)
+                synced += result.inserted_count
+            except BulkWriteError as bwe:
+                synced += bwe.details.get('nInserted', 0)
+                skipped += len(bwe.details.get('writeErrors', []))
             batch = []
             elapsed = time.time() - start
             speed = synced / elapsed if elapsed > 0 else 0
             pct = int(synced / total * 100)
-            if synced % 50000 == 0:
-                log(f"  {col_name}: {synced:,}/{total:,} ({pct}%) - {speed:,.0f} docs/s")
+            if synced % 50000 < BATCH_SIZE:
+                dup_msg = f" (skipped {skipped:,} duplicates)" if skipped else ""
+                log(f"  {col_name}: {synced:,}/{total:,} ({pct}%) - {speed:,.0f} docs/s{dup_msg}")
     
     if batch:
-        await local_db[col_name].bulk_write(batch, ordered=False)
-        synced += len(batch)
+        try:
+            result = await local_db[col_name].bulk_write(batch, ordered=False)
+            synced += result.inserted_count
+        except BulkWriteError as bwe:
+            synced += bwe.details.get('nInserted', 0)
+            skipped += len(bwe.details.get('writeErrors', []))
     
     elapsed = time.time() - start
     speed = synced / elapsed if elapsed > 0 else 0
-    log(f"{col_name}: DONE {synced:,} docs in {elapsed:.1f}s ({speed:,.0f} docs/s)")
+    dup_msg = f" ({skipped:,} duplicates skipped)" if skipped else ""
+    log(f"{col_name}: DONE {synced:,} docs in {elapsed:.1f}s ({speed:,.0f} docs/s){dup_msg}")
 
 async def main():
     cloud_url = os.environ.get('CLOUD_MONGO_URL', '')

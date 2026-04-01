@@ -14,6 +14,7 @@ from auth import get_current_user
 from database import get_app_db, get_local_db, get_cloud_db, check_local_db_health
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne
+from pymongo.errors import BulkWriteError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,25 +74,35 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
         
         # Sync in batches
         synced = 0
+        skipped = 0
         cursor = cloud_db[collection_name].find({}).batch_size(BATCH_SIZE)
         
         batch = []
         async for doc in cursor:
+            doc.pop('_id', None)
             batch.append(InsertOne(doc))
             
             if len(batch) >= BATCH_SIZE:
-                await local_db[collection_name].bulk_write(batch, ordered=False)
-                synced += len(batch)
+                try:
+                    result = await local_db[collection_name].bulk_write(batch, ordered=False)
+                    synced += result.inserted_count
+                except BulkWriteError as bwe:
+                    synced += bwe.details.get('nInserted', 0)
+                    skipped += len(bwe.details.get('writeErrors', []))
                 sync_state["synced"] = synced
                 sync_state["progress"] = int((synced / total_count) * 100) if total_count > 0 else 100
                 
-                logger.info(f"  {collection_name}: {synced:,}/{total_count:,} ({sync_state['progress']}%)")
+                logger.info(f"  {collection_name}: {synced:,}/{total_count:,} ({sync_state['progress']}%) skipped: {skipped:,}")
                 batch = []
         
         # Insert remaining
         if batch:
-            await local_db[collection_name].bulk_write(batch, ordered=False)
-            synced += len(batch)
+            try:
+                result = await local_db[collection_name].bulk_write(batch, ordered=False)
+                synced += result.inserted_count
+            except BulkWriteError as bwe:
+                synced += bwe.details.get('nInserted', 0)
+                skipped += len(bwe.details.get('writeErrors', []))
             sync_state["synced"] = synced
         
         # Create indexes
