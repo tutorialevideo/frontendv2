@@ -221,61 +221,113 @@ const LegalInfo = ({ cui }) => {
                 
                 {/* Expanded details */}
                 {expandedDosar === index && (
-                  <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    {dosar.departament && (
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Departament:</span>{' '}
-                        {dosar.departament}
-                      </p>
-                    )}
-                    {dosar.categorie && (
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">Categorie:</span>{' '}
-                        {dosar.categorie}
-                      </p>
-                    )}
+                  <div className="mt-4 pt-4 border-t border-border space-y-3" data-testid={`dosar-details-${index}`}>
+                    {/* Informații de bază dosar */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {dosar.categorie && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Categorie:</span>{' '}
+                          <span className="font-medium">{dosar.categorie}</span>
+                        </p>
+                      )}
+                      {dosar.stadiu && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Stadiu:</span>{' '}
+                          <span className="font-medium">{dosar.stadiu}</span>
+                        </p>
+                      )}
+                      {dosar.materie && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Materie:</span>{' '}
+                          <span className="font-medium">{dosar.materie}</span>
+                        </p>
+                      )}
+                      {dosar.departament && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Departament:</span>{' '}
+                          <span className="font-medium">{dosar.departament}</span>
+                        </p>
+                      )}
+                      {dosar.data_modificare && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Ultima actualizare:</span>{' '}
+                          <span className="font-medium">{formatDate(dosar.data_modificare)}</span>
+                        </p>
+                      )}
+                    </div>
                     
                     {/* Părți */}
                     {dosar.parti && dosar.parti.length > 0 && (
                       <div>
-                        <p className="text-sm font-medium mb-2">Părți:</p>
-                        <div className="space-y-1">
+                        <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          Părți implicate:
+                        </p>
+                        <div className="space-y-1 ml-5">
                           {dosar.parti.map((parte, i) => (
                             <div key={i} className="text-sm flex items-center gap-2">
-                              <Users className="w-3 h-3 text-muted-foreground" />
-                              <span>{parte.nume}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({parte.calitateParte})
-                              </span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0"></span>
+                              <span>{parte.nume || parte.name}</span>
+                              {(parte.calitateParte || parte.calitate) && (
+                                <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-secondary rounded">
+                                  {parte.calitateParte || parte.calitate}
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
                     
-                    {/* Ședințe recente */}
+                    {/* Ședințe recente - Timeline */}
                     {dosar.sedinte && dosar.sedinte.length > 0 && (
                       <div>
-                        <p className="text-sm font-medium mb-2">Ședințe recente:</p>
-                        <div className="space-y-2">
-                          {dosar.sedinte.slice(0, 3).map((sedinta, i) => (
-                            <div key={i} className="text-sm bg-secondary/50 p-2 rounded">
-                              <div className="flex justify-between">
-                                <span className="font-medium">
-                                  {formatDate(sedinta.data)} - {sedinta.ora}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  Complet {sedinta.complet}
-                                </span>
+                        <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          Ședințe recente:
+                        </p>
+                        <div className="ml-5 border-l-2 border-primary/20 pl-4 space-y-3">
+                          {dosar.sedinte.slice(0, 5).map((sedinta, i) => (
+                            <div key={i} className="relative text-sm">
+                              <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary/60 border-2 border-background"></div>
+                              <div className="bg-secondary/50 p-3 rounded-lg">
+                                <div className="flex justify-between items-start flex-wrap gap-1">
+                                  <span className="font-medium text-primary">
+                                    {formatDate(sedinta.data)} {sedinta.ora && `- ${sedinta.ora}`}
+                                  </span>
+                                  {sedinta.complet && (
+                                    <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                                      Complet: {sedinta.complet}
+                                    </span>
+                                  )}
+                                </div>
+                                {sedinta.solutie && (
+                                  <p className="text-foreground mt-1 font-medium">
+                                    {sedinta.solutie}
+                                  </p>
+                                )}
+                                {sedinta.solutieSumar && (
+                                  <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                                    {sedinta.solutieSumar}
+                                  </p>
+                                )}
                               </div>
-                              {sedinta.solutie && (
-                                <p className="text-muted-foreground mt-1">
-                                  {sedinta.solutie}: {sedinta.solutieSumar}
-                                </p>
-                              )}
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Mesaj când nu sunt detalii suplimentare */}
+                    {(!dosar.parti || dosar.parti.length === 0) && (!dosar.sedinte || dosar.sedinte.length === 0) && !dosar.departament && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/30 p-3 rounded-lg">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>
+                          {dosar.categorie || dosar.stadiu || dosar.materie
+                            ? 'Părțile și ședințele nu sunt încă disponibile pentru acest dosar.'
+                            : 'Detalii suplimentare nu sunt disponibile momentan. Datele vor fi actualizate la următoarea sincronizare.'
+                          }
+                        </span>
                       </div>
                     )}
                   </div>

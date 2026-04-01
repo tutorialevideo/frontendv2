@@ -72,13 +72,14 @@ async def get_dosare_by_cui(
             "data_dosar": dosar.get('data_dosar'),
             "institutie": dosar.get('institutie'),
             "departament": dosar.get('departament'),
-            "categorie": dosar.get('categorie_caz') or dosar.get('categorie_caz_nume'),
-            "stadiu": dosar.get('stadiu_procesual') or dosar.get('stadiu_procesual_nume'),
+            "categorie": dosar.get('categorie') or dosar.get('categorie_caz') or dosar.get('categorie_caz_nume'),
+            "stadiu": dosar.get('stadiu') or dosar.get('stadiu_procesual') or dosar.get('stadiu_procesual_nume'),
+            "materie": dosar.get('materie'),
             "obiect": dosar.get('obiect'),
             "parti": dosar.get('parti', []),
-            "sedinte": dosar.get('sedinte', [])[:5],  # Limit sedinte to last 5
+            "sedinte": dosar.get('sedinte', [])[:5],
             "calitate_parte": dosar.get('calitate_parte'),
-            "data_modificare": dosar.get('data_modificare')
+            "data_modificare": dosar.get('data_modificare') or dosar.get('updated_at')
         })
     
     return {
