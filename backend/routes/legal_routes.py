@@ -222,7 +222,7 @@ async def get_lichidatori_by_cui(cui: str):
 async def get_legal_summary(cui: str):
     """
     Get a summary of all legal information for a company.
-    Reads pre-computed flags directly from firma document (no extra queries).
+    Uses pre-computed flags if available, otherwise queries dosare/bpi collections.
     """
     local_db = get_local_db()
     
@@ -231,7 +231,6 @@ async def get_legal_summary(cui: str):
     
     cui_clean = cui.replace('RO', '').replace(' ', '').strip()
     
-    # Find firma - flags are pre-computed on the document
     firma = await local_db.firme.find_one(
         {"$or": [{"cui": cui_clean}, {"cui": int(cui_clean) if cui_clean.isdigit() else cui_clean}]},
         {"_id": 0, "id": 1, "denumire": 1, "anaf_stare": 1,
@@ -251,8 +250,22 @@ async def get_legal_summary(cui: str):
             "has_legal_issues": False
         }
     
-    dosare_count = firma.get('dosare_count', 0) or 0
-    bpi_count = firma.get('bpi_count', 0) or 0
+    # Use pre-computed flags if available, otherwise query collections
+    if "dosare_count" in firma and firma["dosare_count"] is not None:
+        dosare_count = firma.get('dosare_count', 0) or 0
+    else:
+        firma_id = firma.get('id')
+        dosare_count = 0
+        if firma_id:
+            dosare_count = await local_db.dosare.count_documents({"firma_id": firma_id})
+    
+    if "bpi_count" in firma and firma["bpi_count"] is not None:
+        bpi_count = firma.get('bpi_count', 0) or 0
+    else:
+        bpi_count = await local_db.bpi_records.count_documents({
+            "$or": [{"cui": cui_clean}, {"cui": int(cui_clean) if cui_clean.isdigit() else cui_clean}]
+        })
+    
     stare = firma.get('anaf_stare', '') or ''
     in_insolventa = bpi_count > 0 or 'insolvență' in stare.lower() or 'insolventa' in stare.lower()
     
@@ -263,5 +276,5 @@ async def get_legal_summary(cui: str):
         "dosare_count": dosare_count,
         "bpi_count": bpi_count,
         "in_insolventa": in_insolventa,
-        "has_legal_issues": firma.get('has_legal_issues', False)
+        "has_legal_issues": dosare_count > 0 or bpi_count > 0
     }
