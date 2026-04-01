@@ -330,7 +330,7 @@ MongoDB:
 - ✅ Elasticsearch integration for fuzzy search (Faza 7)
 - ✅ Dynamic SEO Templates with admin control (Faza 8)
 
-### Session 9 - Legal Info Integration
+### Session 9 - Legal Info Integration + Admin Filters
 **Date: February 2026**
 
 #### Completed Features:
@@ -338,10 +338,14 @@ MongoDB:
    - Integrated `LegalInfo.js` into `CompanyPage.js` under Financial Indicators section
    - Displays Dosare (Portal JUST) and BPI (Buletinul Procedurilor de Insolvență) data
    - Shows "Fără probleme juridice" for clean companies
-   - Color-coded alerts: red for insolvency, amber for legal issues, green for clean
-   - Expandable court case details with parties, hearings
    - Backend: 4 API endpoints (`/api/legal/summary`, `/api/legal/dosare`, `/api/legal/bpi`, `/api/legal/lichidatori`)
-   - Testing: 100% pass rate (16/16 backend tests + all frontend tests)
+
+2. **Admin: Filtrare Firme Radiate & Date Incomplete** ✅
+   - 4 filtre noi: Active (1.21M), Radiate (1.17M), Date Incomplete (2.03M), Toate (2.38M)
+   - Firmele radiate și incomplete se interogheaza din Cloud MongoDB
+   - Endpoint `/api/admin/companies/counts` cu statistici pe categorii
+   - Vizualizare stare RADIERE în tabel
+   - Click pe firma radiată deschide profilul complet (fallback pe cloud DB)
 
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently simulated)
