@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from database import get_app_db, get_readonly_db, get_cloud_db
+from database import get_app_db, get_readonly_db
 from auth import get_current_user
 from models import (
     CompanySearchRequest, CompanyOverrideRequest, 
@@ -32,8 +32,10 @@ async def list_companies(
 ):
     """
     List companies with pagination, search and status filter.
-    stare: active (local DB), radiate/incomplete/all (cloud DB)
+    All data from local DB (fully synced from cloud).
     """
+    db = get_readonly_db()
+
     projection = {
         "_id": 0,
         "cui": 1,
@@ -50,14 +52,6 @@ async def list_companies(
         "has_bpi": 1
     }
 
-    # Decide which DB to use
-    if stare == "active":
-        db = get_readonly_db()
-    else:
-        db = get_cloud_db()
-        if db is None:
-            raise HTTPException(status_code=503, detail="Cloud database not available for non-active companies")
-
     # Build base query
     query = {}
     if q.strip():
@@ -67,7 +61,9 @@ async def list_companies(
             query["denumire"] = {"$regex": q, "$options": "i"}
 
     # Apply stare filter
-    if stare == "radiate":
+    if stare == "active":
+        query["anaf_stare_startswith_inregistrat"] = True
+    elif stare == "radiate":
         query["anaf_stare_startswith_inregistrat"] = False
     elif stare == "incomplete":
         query["$or"] = [
@@ -75,8 +71,7 @@ async def list_companies(
             {"mf_an_bilant": None},
             {"anaf_stare": None}
         ]
-    elif stare == "all":
-        pass  # no extra filter
+    # stare == "all" -> no extra filter
 
     total = await db.firme.count_documents(query)
     cursor = db.firme.find(query, projection).skip(skip).limit(limit)
@@ -96,30 +91,24 @@ async def list_companies(
 
 @router.get("/counts")
 async def get_company_counts(current_user = Depends(require_admin)):
-    """Get counts for each company category"""
-    local_db = get_readonly_db()
-    cloud_db = get_cloud_db()
+    """Get counts for each company category - all from local DB"""
+    db = get_readonly_db()
 
-    active = await local_db.firme.count_documents({})
-
-    radiate = 0
-    total_cloud = 0
-    incomplete = 0
-    if cloud_db is not None:
-        total_cloud = await cloud_db.firme.count_documents({})
-        radiate = await cloud_db.firme.count_documents({"anaf_stare_startswith_inregistrat": False})
-        incomplete = await cloud_db.firme.count_documents({
-            "$or": [
-                {"mf_cifra_afaceri": None},
-                {"mf_an_bilant": None}
-            ]
-        })
+    total = await db.firme.count_documents({})
+    active = await db.firme.count_documents({"anaf_stare_startswith_inregistrat": True})
+    radiate = await db.firme.count_documents({"anaf_stare_startswith_inregistrat": False})
+    incomplete = await db.firme.count_documents({
+        "$or": [
+            {"mf_cifra_afaceri": None},
+            {"mf_an_bilant": None}
+        ]
+    })
 
     return {
         "active": active,
         "radiate": radiate,
         "incomplete": incomplete,
-        "total": total_cloud or active
+        "total": total
     }
 
 
