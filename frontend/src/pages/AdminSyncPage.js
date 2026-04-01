@@ -384,6 +384,18 @@ const AdminSyncPage = () => {
                 <span className="text-muted-foreground">Bilanțuri</span>
                 <span className="font-mono font-medium">{formatNumber(cloudCounts.bilanturi || 0)}</span>
               </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Dosare</span>
+                <span className="font-mono font-medium">{formatNumber(cloudCounts.dosare || 0)}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">BPI Records</span>
+                <span className="font-mono font-medium">{formatNumber(cloudCounts.bpi_records || 0)}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Lichidatori</span>
+                <span className="font-mono font-medium">{formatNumber(cloudCounts.lichidatori || 0)}</span>
+              </div>
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Status</span>
                 <span className={`flex items-center gap-1 ${syncStatus?.cloud_connected ? 'text-green-600' : 'text-amber-600'}`}>
@@ -539,6 +551,30 @@ const AdminSyncPage = () => {
               className="px-4 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 disabled:opacity-50"
             >
               Sync Bilanțuri
+            </button>
+
+            <button
+              onClick={() => triggerCollectionSync('dosare')}
+              disabled={syncing || syncState.is_running}
+              className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              Sync Dosare
+            </button>
+
+            <button
+              onClick={() => triggerCollectionSync('bpi_records')}
+              disabled={syncing || syncState.is_running}
+              className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+            >
+              Sync BPI
+            </button>
+
+            <button
+              onClick={() => triggerCollectionSync('lichidatori')}
+              disabled={syncing || syncState.is_running}
+              className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              Sync Lichidatori
             </button>
           </div>
 

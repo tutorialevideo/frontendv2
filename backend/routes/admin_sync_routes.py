@@ -166,6 +166,29 @@ async def create_indexes(local_db, collection_name: str):
         elif collection_name == 'caen_codes':
             await local_db[collection_name].create_index('cod', unique=True)
             logger.info(f"  Created indexes for {collection_name}")
+        
+        elif collection_name == 'dosare':
+            await local_db[collection_name].create_index('firma_id')
+            await local_db[collection_name].create_index('numar_dosar')
+            await local_db[collection_name].create_index('institutie')
+            await local_db[collection_name].create_index('data_dosar')
+            await local_db[collection_name].create_index([('firma_id', 1), ('data_dosar', -1)])
+            logger.info(f"  Created indexes for {collection_name}")
+        
+        elif collection_name == 'bpi_records':
+            await local_db[collection_name].create_index('cui')
+            await local_db[collection_name].create_index('dosar')
+            await local_db[collection_name].create_index('tip_procedura')
+            await local_db[collection_name].create_index('data_publicare')
+            await local_db[collection_name].create_index([('denumire_firma', 'text')])
+            logger.info(f"  Created indexes for {collection_name}")
+        
+        elif collection_name == 'lichidatori':
+            await local_db[collection_name].create_index('nume')
+            await local_db[collection_name].create_index('nume_normalized')
+            await local_db[collection_name].create_index('cui')
+            await local_db[collection_name].create_index('firme.cui')
+            logger.info(f"  Created indexes for {collection_name}")
             
     except Exception as e:
         logger.warning(f"Error creating indexes for {collection_name}: {e}")
@@ -234,8 +257,12 @@ async def get_sync_status(admin_user = Depends(verify_admin)):
             await cloud_db.command('ping')
             cloud_latency = round((time.perf_counter() - start) * 1000, 2)  # ms
             
-            for col in ['firme', 'bilanturi']:
-                cloud_counts[col] = await cloud_db[col].estimated_document_count()
+            # Get counts for ALL collections
+            for col in ['firme', 'bilanturi', 'dosare', 'bpi_records', 'lichidatori']:
+                try:
+                    cloud_counts[col] = await cloud_db[col].estimated_document_count()
+                except:
+                    cloud_counts[col] = 0
             cloud_connected = True
         except Exception as e:
             cloud_counts["error"] = str(e)
@@ -311,13 +338,16 @@ async def trigger_direct_sync(
         raise HTTPException(status_code=400, detail=error_msg)
     
     # Define collections to sync
+    # UPDATED: Include all new collections (dosare, bpi_records, lichidatori)
+    ALLOWED_COLLECTIONS = ['firme', 'bilanturi', 'caen_codes', 'dosare', 'bpi_records', 'lichidatori']
+    
     if collection:
-        allowed = ['firme', 'bilanturi', 'caen_codes']
-        if collection not in allowed:
-            raise HTTPException(status_code=400, detail=f"Invalid collection. Allowed: {allowed}")
+        if collection not in ALLOWED_COLLECTIONS:
+            raise HTTPException(status_code=400, detail=f"Invalid collection. Allowed: {ALLOWED_COLLECTIONS}")
         collections = [collection]
     else:
-        collections = ['firme', 'bilanturi']
+        # Default: sync all main collections
+        collections = ['firme', 'bilanturi', 'dosare', 'bpi_records', 'lichidatori']
     
     # Start sync in background
     background_tasks.add_task(run_full_sync, cloud_db, local_db, collections)
