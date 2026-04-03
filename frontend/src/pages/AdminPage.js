@@ -85,8 +85,8 @@ const AdminPage = () => {
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard | mFirme</title>
-        <meta name="description" content="Panoul de administrare mFirme" />
+        <title>Admin Dashboard | RapoarteFirme</title>
+        <meta name="description" content="Panoul de administrare RapoarteFirme" />
       </Helmet>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

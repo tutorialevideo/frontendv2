@@ -22,9 +22,9 @@ const Header = () => {
         <div className="flex items-center justify-between h-14">
           <Link to="/" className="flex items-center space-x-2" data-testid="logo-link">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">m</span>
+              <span className="text-white font-bold text-lg">R</span>
             </div>
-            <span className="text-xl font-semibold tracking-tight">Firme</span>
+            <span className="text-xl font-semibold tracking-tight">RapoarteFirme</span>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">

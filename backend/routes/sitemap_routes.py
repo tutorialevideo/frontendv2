@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sitemap", tags=["sitemap"])
 
-SITE_URL = "https://mfirme.ro"
+SITE_URL = "https://rapoartefirme.ro"
 MAX_URLS_PER_SITEMAP = 45000
 
 # Clean sitemap paths (at domain root level)

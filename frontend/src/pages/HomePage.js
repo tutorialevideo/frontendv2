@@ -85,23 +85,23 @@ const HomePage = () => {
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "mFirme.ro",
-    "url": "https://mfirme.ro",
+    "name": "RapoarteFirme.ro",
+    "url": "https://rapoartefirme.ro",
     "description": "Baza de date completă a firmelor din România - peste 1.2 milioane de companii",
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": "https://mfirme.ro/search?q={search_term_string}"
+        "urlTemplate": "https://rapoartefirme.ro/search?q={search_term_string}"
       },
       "query-input": "required name=search_term_string"
     },
     "publisher": {
       "@type": "Organization",
-      "name": "mFirme.ro",
+      "name": "RapoarteFirme.ro",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://mfirme.ro/logo.png"
+        "url": "https://rapoartefirme.ro/logo.png"
       }
     }
   };
@@ -109,9 +109,9 @@ const HomePage = () => {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "mFirme.ro",
-    "url": "https://mfirme.ro",
-    "logo": "https://mfirme.ro/logo.png",
+    "name": "RapoarteFirme.ro",
+    "url": "https://rapoartefirme.ro",
+    "logo": "https://rapoartefirme.ro/logo.png",
     "description": "Platformă pentru căutarea și analiza firmelor din România",
     "foundingDate": "2024",
     "areaServed": "RO",
@@ -121,7 +121,7 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>{seoTitle || 'mFirme - Baza de date complete despre firmele din România'}</title>
+        <title>{seoTitle || 'RapoarteFirme - Baza de date complete despre firmele din România'}</title>
         <meta 
           name="description" 
           content={seoDescription || 'Caută și analizează peste 1.2 milioane de firme din România. Date actualizate zilnic: CUI, adresă, date financiare, indicatori.'}

@@ -133,7 +133,7 @@ const SubscriptionPage = () => {
   return (
     <>
       <Helmet>
-        <title>Abonamente | mFirme</title>
+        <title>Abonamente | RapoarteFirme</title>
         <meta name="description" content="Alege planul potrivit pentru nevoile tale" />
       </Helmet>
 

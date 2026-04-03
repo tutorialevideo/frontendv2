@@ -47,8 +47,8 @@ const LoginPage = () => {
   return (
     <>
       <Helmet>
-        <title>Login | mFirme</title>
-        <meta name="description" content="Autentificare în contul mFirme" />
+        <title>Login | RapoarteFirme</title>
+        <meta name="description" content="Autentificare în contul RapoarteFirme" />
       </Helmet>
 
       <div className="min-h-[80vh] flex items-center justify-center bg-secondary/30 py-12 px-4 sm:px-6 lg:px-8">
@@ -60,7 +60,7 @@ const LoginPage = () => {
               </div>
               <h2 className="text-2xl font-semibold tracking-tight">Autentificare</h2>
               <p className="text-sm text-muted-foreground mt-2">
-                Conectează-te la contul tău mFirme
+                Conectează-te la contul tău RapoarteFirme
               </p>
             </div>
 

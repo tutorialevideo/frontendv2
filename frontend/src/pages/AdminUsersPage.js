@@ -100,7 +100,7 @@ const AdminUsersPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Gestionare Utilizatori | Admin mFirme</title>
+        <title>Gestionare Utilizatori | Admin RapoarteFirme</title>
       </Helmet>
 
       <div className="mb-8">

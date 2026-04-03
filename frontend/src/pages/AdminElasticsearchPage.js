@@ -203,7 +203,7 @@ const AdminElasticsearchPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Elasticsearch | Admin mFirme</title>
+        <title>Elasticsearch | Admin RapoarteFirme</title>
       </Helmet>
 
       <div className="space-y-6">

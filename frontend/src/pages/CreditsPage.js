@@ -97,7 +97,7 @@ const CreditsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Credite | mFirme</title>
+        <title>Credite | RapoarteFirme</title>
         <meta name="description" content="Cumpără credite pentru a accesa informații despre firme" />
       </Helmet>
 

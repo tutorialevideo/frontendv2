@@ -30,8 +30,8 @@ const AccountPage = () => {
   return (
     <>
       <Helmet>
-        <title>Contul meu | mFirme</title>
-        <meta name="description" content="Dashboard-ul contului mFirme" />
+        <title>Contul meu | RapoarteFirme</title>
+        <meta name="description" content="Dashboard-ul contului RapoarteFirme" />
       </Helmet>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

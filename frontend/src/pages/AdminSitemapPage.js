@@ -231,7 +231,7 @@ const AdminSitemapPage = () => {
         <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
           <li>Deschide <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Search Console</a></li>
           <li>Mergi la <strong>Sitemaps</strong> din meniul lateral</li>
-          <li>Adauga URL-ul sitemap index: <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">https://mfirme.ro/sitemap.xml</code></li>
+          <li>Adauga URL-ul sitemap index: <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">https://rapoartefirme.ro/sitemap.xml</code></li>
           <li>Google va descoperi automat toate sub-sitemap-urile ({stats.total_sitemaps || 0} fisiere)</li>
           <li>Apasa <strong>"Actualizeaza Sitemap"</strong> de fiecare data cand adaugi date noi</li>
         </ol>

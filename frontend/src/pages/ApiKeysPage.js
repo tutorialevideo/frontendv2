@@ -181,8 +181,8 @@ const ApiKeysPage = () => {
   return (
     <>
       <Helmet>
-        <title>Chei API | mFirme</title>
-        <meta name="description" content="Gestionează cheile tale API pentru acces programatic la datele mFirme" />
+        <title>Chei API | RapoarteFirme</title>
+        <meta name="description" content="Gestionează cheile tale API pentru acces programatic la datele RapoarteFirme" />
       </Helmet>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -450,7 +450,7 @@ const ApiKeysPage = () => {
             <div>
               <h3 className="font-semibold mb-1">Documentație API</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Află cum să folosești API-ul mFirme în aplicația ta. Exemple de cod, endpoint-uri disponibile și ghiduri de integrare.
+                Află cum să folosești API-ul RapoarteFirme în aplicația ta. Exemple de cod, endpoint-uri disponibile și ghiduri de integrare.
               </p>
               <div className="flex flex-wrap gap-3">
                 <code className="px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-xs font-mono">

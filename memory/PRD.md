@@ -1,7 +1,7 @@
-# mFirme Platform - Product Requirements Document
+# RapoarteFirme Platform - Product Requirements Document
 
 ## Original Problem Statement
-Construieste o platforma completa pentru afisarea firmelor romanesti (mFirme), bazata pe date publice agregate (1.2 milioane active, peste 3.5 milioane total). Platforma necesita 3 zone distincte: Site public, Zona User (autentificare, planuri), si Zona Admin. Sistem de abonamente cu limitari de date. Migrare catre o Arhitectura Hibrida (MongoDB local pentru viteza, sincronizat cu baza de date principala din Cloud). Adaugare API Keys management, motor de cautare Elasticsearch, sistem SEO dinamic, Generator Dinamic de Sitemap XML, analiza financiara pentru contabili, navigare pe judete/localitati si coduri CAEN, plus integrare dosare Portal JUST si date BPI pe pagina firmei.
+Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFirme, domeniu: rapoartefirme.ro), bazata pe date publice agregate (1.2 milioane active, peste 3.5 milioane total). Platforma necesita 3 zone distincte: Site public, Zona User (autentificare, planuri), si Zona Admin. Sistem de abonamente cu limitari de date. Migrare catre o Arhitectura Hibrida (MongoDB local pentru viteza, sincronizat cu baza de date principala din Cloud). Adaugare API Keys management, motor de cautare Elasticsearch, sistem SEO dinamic, Generator Dinamic de Sitemap XML, analiza financiara pentru contabili, navigare pe judete/localitati si coduri CAEN, plus integrare dosare Portal JUST si date BPI pe pagina firmei.
 
 ## Tech Stack
 - **Backend**: FastAPI, PyMongo, Motor (async MongoDB)
@@ -67,12 +67,25 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (mFirme), b
 - Linkuri clickabile judet/localitate/CAEN din profilul firmei
 - Generator Dinamic Sitemap XML
 
-### Session 11 (Current) - Bug Fix LegalInfo Expand
+### Session 11 (Current) - Bug Fix LegalInfo Expand + Rebranding
 **Date: April 2026**
 - FIX: Backend legal_routes.py - mapare corecta campuri (stadiu, categorie, materie, data_modificare)
 - FIX: Frontend LegalInfo.js - expand dosar arata acum Categorie, Stadiu, Materie, Ultima actualizare
 - FIX: Mesaj informativ cand parti/sedinte lipsesc din DB
 - FIX: Timeline sedinte cu design vertical (border-left + cercuri)
+- REBRANDING: mFirme -> RapoarteFirme (rapoartefirme.ro)
+  - Header logo: R + RapoarteFirme
+  - Footer: RapoarteFirme
+  - Admin: RapoarteFirme Admin
+  - Toate titlurile paginilor actualizate (| RapoarteFirme)
+  - JSON-LD: rapoartefirme.ro
+  - SEO templates default: RapoarteFirme.ro
+  - Sitemap URL: rapoartefirme.ro
+  - robots.txt: rapoartefirme.ro
+  - Backend API title: RapoarteFirme API
+  - Raport financiar footer: RapoarteFirme.ro
+  - Stripe plan name: RapoarteFirme
+  - Nu s-au schimbat: DB names (mfirme_local, mfirme_app), email admin (admin@mfirme.ro), ES index (mfirme_companies)
 
 ## Database Schema
 

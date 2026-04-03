@@ -101,7 +101,7 @@ async def create_checkout(
                 'price_data': {
                     'currency': 'ron',
                     'product_data': {
-                        'name': f'mFirme {plan.name}',
+                        'name': f'RapoarteFirme {plan.name}',
                         'description': f'Abonament {plan.name} lunar'
                     },
                     'unit_amount': int(plan.price * 100),  # Stripe uses cents

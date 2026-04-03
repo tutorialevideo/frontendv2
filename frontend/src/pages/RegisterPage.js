@@ -38,8 +38,8 @@ const RegisterPage = () => {
   return (
     <>
       <Helmet>
-        <title>Înregistrare | mFirme</title>
-        <meta name="description" content="Creează un cont mFirme gratuit" />
+        <title>Înregistrare | RapoarteFirme</title>
+        <meta name="description" content="Creează un cont RapoarteFirme gratuit" />
       </Helmet>
 
       <div className="min-h-[80vh] flex items-center justify-center bg-secondary/30 py-12 px-4 sm:px-6 lg:px-8">

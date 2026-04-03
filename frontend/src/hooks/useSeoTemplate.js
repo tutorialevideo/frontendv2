@@ -71,7 +71,7 @@ export const useSeoTemplate = (pageType, data = {}) => {
       } else {
         // Fallback dacă nu avem template
         setSeoData({
-          title: data.DENUMIRE || 'mFirme.ro',
+          title: data.DENUMIRE || 'RapoarteFirme.ro',
           description: '',
           index: true
         });

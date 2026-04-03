@@ -333,7 +333,7 @@ const AdminCompaniesPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Gestionare Firme | Admin mFirme</title>
+        <title>Gestionare Firme | Admin RapoarteFirme</title>
       </Helmet>
 
       <div className="mb-6">

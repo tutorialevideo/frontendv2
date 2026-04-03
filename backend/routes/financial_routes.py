@@ -1138,7 +1138,7 @@ def generate_pdf_html(indicators: Dict) -> str:
         </div>
         
         <div class="footer">
-            <p>Raport generat de mFirme.ro la {datetime.now().strftime('%d.%m.%Y %H:%M')}</p>
+            <p>Raport generat de RapoarteFirme.ro la {datetime.now().strftime('%d.%m.%Y %H:%M')}</p>
             <p>Datele sunt preluate din sursele oficiale ANAF și Ministerul Finanțelor. Acest raport are caracter informativ.</p>
         </div>
     </body>

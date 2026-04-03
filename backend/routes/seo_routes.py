@@ -45,35 +45,35 @@ DEFAULT_TEMPLATES = {
     },
     "search": {
         "page_type": "search",
-        "title_template": "Căutare firme: {QUERY} | mFirme.ro",
+        "title_template": "Căutare firme: {QUERY} | RapoarteFirme.ro",
         "description_template": "Rezultate căutare pentru '{QUERY}'. Găsește firme românești, date financiare, bilanțuri și informații de contact.",
         "index": True,
         "enabled": True
     },
     "caen_category": {
         "page_type": "caen_category",
-        "title_template": "Firme cu activitate {CAEN} - {CAEN_DESCRIERE} | mFirme.ro",
+        "title_template": "Firme cu activitate {CAEN} - {CAEN_DESCRIERE} | RapoarteFirme.ro",
         "description_template": "Lista completă de firme cu cod CAEN {CAEN} ({CAEN_DESCRIERE}). Descoperă companii din acest domeniu de activitate.",
         "index": True,
         "enabled": True
     },
     "homepage": {
         "page_type": "homepage",
-        "title_template": "mFirme.ro - Baza de date a firmelor din România",
+        "title_template": "RapoarteFirme.ro - Baza de date a firmelor din România",
         "description_template": "Caută printre 1.2 milioane de firme românești. Date financiare, bilanțuri, informații de contact și istoric complet.",
         "index": True,
         "enabled": True
     },
     "judet": {
         "page_type": "judet",
-        "title_template": "Firme din județul {JUDET} | mFirme.ro",
+        "title_template": "Firme din județul {JUDET} | RapoarteFirme.ro",
         "description_template": "Vezi toate firmele înregistrate în județul {JUDET}. Date financiare, bilanțuri și informații complete.",
         "index": True,
         "enabled": True
     },
     "localitate": {
         "page_type": "localitate",
-        "title_template": "Firme din {LOCALITATE}, {JUDET} | mFirme.ro",
+        "title_template": "Firme din {LOCALITATE}, {JUDET} | RapoarteFirme.ro",
         "description_template": "Descoperă firmele din {LOCALITATE}, județul {JUDET}. Informații complete, date financiare și contact.",
         "index": True,
         "enabled": True

@@ -100,7 +100,7 @@ const AdminAuditPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Audit Log | Admin mFirme</title>
+        <title>Audit Log | Admin RapoarteFirme</title>
       </Helmet>
 
       <div className="mb-8">

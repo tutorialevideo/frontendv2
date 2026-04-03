@@ -212,7 +212,7 @@ const CompanyPage = () => {
   return (
     <>
       <Helmet>
-        <title>{seoTitle || `${company.denumire} - CUI ${company.cui} | mFirme`}</title>
+        <title>{seoTitle || `${company.denumire} - CUI ${company.cui} | RapoarteFirme`}</title>
         <meta name="description" content={seoDescription || `${company.denumire || 'Firmă'} din ${company.localitate || ''}, ${company.judet || ''}. CUI: ${company.cui || ''}.`} />
         {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
         <script type="application/ld+json">

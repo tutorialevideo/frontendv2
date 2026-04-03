@@ -10,7 +10,7 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /account/
 
-Sitemap: https://mfirme.ro/sitemap.xml
+Sitemap: https://rapoartefirme.ro/sitemap.xml
 
 # Pe productie, configurati nginx:
 # location = /sitemap.xml { proxy_pass http://backend:8001/api/sitemap.xml; }

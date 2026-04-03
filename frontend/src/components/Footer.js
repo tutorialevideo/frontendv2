@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-semibold text-sm mb-4">mFirme</h3>
+            <h3 className="font-semibold text-sm mb-4">RapoarteFirme</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Platforma premium de informații despre firmele din România.
               Date publice agregate și actualizate zilnic.
@@ -45,7 +45,7 @@ const Footer = () => {
 
         <div className="mt-8 pt-8 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            © {new Date().getFullYear()} mFirme. Toate drepturile rezervate.
+            © {new Date().getFullYear()} RapoarteFirme. Toate drepturile rezervate.
           </p>
         </div>
       </div>

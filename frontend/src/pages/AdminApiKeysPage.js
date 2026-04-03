@@ -283,7 +283,7 @@ const AdminApiKeysPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Gestionare Chei API | Admin mFirme</title>
+        <title>Gestionare Chei API | Admin RapoarteFirme</title>
       </Helmet>
 
       <div className="space-y-6">

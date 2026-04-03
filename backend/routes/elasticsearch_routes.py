@@ -1,5 +1,5 @@
 """
-Elasticsearch Routes for mFirme
+Elasticsearch Routes for RapoarteFirme
 Handles indexing, searching, and management of Elasticsearch
 """
 

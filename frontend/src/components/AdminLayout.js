@@ -68,7 +68,7 @@ const AdminLayout = ({ children }) => {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">m</span>
             </div>
-            <span className="text-lg font-semibold hidden sm:inline">mFirme Admin</span>
+            <span className="text-lg font-semibold hidden sm:inline">RapoarteFirme Admin</span>
           </Link>
         </div>
 

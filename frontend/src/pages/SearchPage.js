@@ -155,7 +155,7 @@ const SearchPage = ({ initialFilters = {} }) => {
     <>
       {!isNested && (
         <Helmet>
-          <title>{seoTitle || `Căutare firme${query ? ` - ${query}` : ''} | mFirme`}</title>
+          <title>{seoTitle || `Căutare firme${query ? ` - ${query}` : ''} | RapoarteFirme`}</title>
           <meta name="description" content={seoDescription || `Rezultate căutare: ${query || 'toate companiile din România'}`} />
           {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
           {searchResultsSchema && (

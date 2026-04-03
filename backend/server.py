@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await close_database_connections()
 
-app = FastAPI(title="mFirme API", lifespan=lifespan)
+app = FastAPI(title="RapoarteFirme API", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -106,7 +106,7 @@ async def sitemap_companies_root(page_num: int):
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "message": "mFirme API is running"}
+    return {"status": "ok", "message": "RapoarteFirme API is running"}
 
 @app.get("/api/search/suggest")
 async def search_suggest(q: str = Query(..., min_length=2)):

@@ -110,8 +110,8 @@ const AdminDashboardPage = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Admin Dashboard | mFirme</title>
-        <meta name="description" content="Panoul de administrare mFirme" />
+        <title>Admin Dashboard | RapoarteFirme</title>
+        <meta name="description" content="Panoul de administrare RapoarteFirme" />
       </Helmet>
 
       {/* Header */}
@@ -120,7 +120,7 @@ const AdminDashboardPage = () => {
           Dashboard Administrativ
         </h1>
         <p className="text-muted-foreground">
-          Vedere de ansamblu asupra platformei mFirme
+          Vedere de ansamblu asupra platformei RapoarteFirme
         </p>
       </div>
 

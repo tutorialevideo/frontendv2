@@ -59,7 +59,7 @@ const FavoritesPage = () => {
   return (
     <>
       <Helmet>
-        <title>Favorite | mFirme</title>
+        <title>Favorite | RapoarteFirme</title>
         <meta name="description" content="Firmele tale favorite" />
       </Helmet>
 
