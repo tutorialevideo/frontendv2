@@ -83,7 +83,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.production
       args:
-        - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
+        - REACT_APP_BACKEND_URL=
     container_name: rapoartefirme-frontend
     restart: always
     ports:
