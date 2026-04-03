@@ -115,10 +115,38 @@ const AdminSyncPage = () => {
     };
   }, [syncing, fetchSyncStatus]);
 
-  const saveConfig = () => {
+  const saveConfig = async () => {
     localStorage.setItem('mongoSyncConfig', JSON.stringify(mongoConfig));
-    setConfigSaved(true);
-    alert('Configurația a fost salvată!');
+    
+    if (mongoConfig.cloudUrl) {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/sync/set-cloud-url`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ cloud_url: mongoConfig.cloudUrl })
+        });
+        
+        const text = await response.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch(e) {}
+        
+        if (response.ok && data) {
+          setConfigSaved(true);
+          alert(`Cloud MongoDB conectat cu succes!`);
+          fetchSyncStatus();
+        } else {
+          alert(`Eroare conectare: ${data?.detail || response.statusText}`);
+        }
+      } catch (err) {
+        alert(`Eroare: ${err.message}`);
+      }
+    } else {
+      setConfigSaved(true);
+      alert('Configurația a fost salvată local.');
+    }
   };
 
   const triggerFullSync = async () => {

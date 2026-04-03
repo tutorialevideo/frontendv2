@@ -385,6 +385,53 @@ async def stop_sync(admin_user = Depends(verify_admin)):
     return {"status": "stopping", "message": "Sync will stop after current batch"}
 
 
+class CloudUrlRequest(BaseModel):
+    cloud_url: str
+
+
+@router.post("/set-cloud-url")
+async def set_cloud_url(request: CloudUrlRequest, admin_user = Depends(verify_admin)):
+    """Set cloud MongoDB URL at runtime (without restart)"""
+    import database
+    
+    cloud_url = request.cloud_url.strip()
+    if not cloud_url:
+        raise HTTPException(status_code=400, detail="Cloud URL is required")
+    
+    try:
+        # Close existing cloud connection
+        if database.cloud_companies_client:
+            database.cloud_companies_client.close()
+        
+        # Connect with new URL
+        client = AsyncIOMotorClient(cloud_url, serverSelectionTimeoutMS=10000)
+        db = client["justportal"]
+        await db.command('ping')
+        
+        # Update global references
+        database.cloud_companies_client = client
+        database.cloud_companies_db = db
+        
+        # Get collection counts
+        counts = {}
+        for col in ['firme', 'bilanturi', 'dosare', 'bpi_records', 'lichidatori']:
+            try:
+                counts[col] = await db[col].estimated_document_count()
+            except:
+                counts[col] = 0
+        
+        logger.info(f"Cloud MongoDB connected successfully via admin UI")
+        
+        return {
+            "status": "connected",
+            "message": "Cloud MongoDB conectat cu succes",
+            "collections": counts
+        }
+    except Exception as e:
+        logger.error(f"Failed to connect to cloud MongoDB: {e}")
+        raise HTTPException(status_code=400, detail=f"Nu s-a putut conecta: {str(e)}")
+
+
 @router.get("/health")
 async def check_connections(admin_user = Depends(verify_admin)):
     """Check database connections"""
