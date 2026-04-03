@@ -1,8 +1,11 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+from passlib.context import CryptContext
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Main database (MongoDB Local - primary for all reads)
 companies_client = None
@@ -58,6 +61,34 @@ async def connect_to_databases():
             print(f"⚠ Cloud MongoDB not available for sync: {e}")
     
     print("Database mode: LOCAL (Cloud used only for sync)")
+    
+    # Seed admin user if not exists
+    if app_db is not None:
+        await seed_admin_user()
+
+
+async def seed_admin_user():
+    """Create default admin user if it doesn't exist"""
+    global app_db
+    
+    admin_email = "admin@mfirme.ro"
+    
+    existing = await app_db.users.find_one({"email": admin_email})
+    if existing:
+        return
+    
+    admin_user = {
+        "email": admin_email,
+        "password_hash": pwd_context.hash("Admin123!"),
+        "name": "Administrator",
+        "tier": "admin",
+        "role": "admin",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    await app_db.users.insert_one(admin_user)
+    print("Admin user created: admin@mfirme.ro / Admin123!")
 
 
 async def close_database_connections():
