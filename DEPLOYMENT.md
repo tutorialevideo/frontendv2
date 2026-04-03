@@ -1,198 +1,181 @@
-# mFirme - Ghid Deployment Producție
+# RapoarteFirme - Ghid Deployment Productie
 
-## Cerințe
+## Cerinte
 
-- **Docker** și **Docker Compose** instalate
-- Minim **4GB RAM** (2GB pentru Elasticsearch, 1GB pentru MongoDB, 1GB pentru aplicație)
-- **20GB** spațiu disk (pentru date și indexuri)
+- **Docker** si **Docker Compose** instalate
+- Minim **4GB RAM** (2GB Elasticsearch, 1GB MongoDB, 1GB aplicatie)
+- **20GB** spatiu disk (pentru date si indexuri)
+- Port **80** liber (si **443** pentru SSL)
 
-## Deployment Rapid (O singură comandă)
+## Deployment Rapid
 
 ```bash
-# 1. Clonează repo-ul
+# 1. Cloneaza repo-ul
 git clone <repository-url>
-cd mfirme
+cd rapoartefirme
 
-# 2. Pornește totul
+# 2. Copiaza si editeaza .env
+cp .env.example .env
+nano .env  # Seteaza SECRET_KEY, DOMAIN_URL, CLOUD_MONGO_URL
+
+# 3. Porneste totul
 chmod +x setup-production.sh
 ./setup-production.sh
 ```
 
-**Gata!** Aplicația rulează pe http://localhost
+**Gata!** Aplicatia ruleaza pe http://localhost
 
 ## Deployment Manual
 
-### 1. Creează fișierul .env
+### 1. Creaza fisierul .env
 
 ```bash
 cat > .env << EOF
 SECRET_KEY=$(openssl rand -hex 32)
-DOMAIN_URL=http://your-domain.com
+DOMAIN_URL=https://rapoartefirme.ro
+CLOUD_MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/justportal
+STRIPE_API_KEY=sk_live_xxx
 EOF
 ```
 
-### 2. Pornește serviciile
+### 2. Porneste serviciile
 
 ```bash
+# Seteaza vm.max_map_count pentru Elasticsearch
+sudo sysctl -w vm.max_map_count=262144
+
+# Build si start
 docker compose -f docker-compose.production.yml up -d --build
 ```
 
-### 3. Verifică status
+### 3. Verifica status
 
 ```bash
 docker compose -f docker-compose.production.yml ps
 ```
 
-## După Deployment
+## Dupa Deployment
 
-### Configurează Elasticsearch
+### 1. Logheaza-te ca Admin
 
-1. Accesează aplicația în browser
-2. Loghează-te ca admin: `admin@mfirme.ro` / `Admin123!`
-3. Mergi la **Admin → Elasticsearch**
-4. Click **"Creează Index"**
-5. Click **"Pornește Indexare"**
-6. Așteaptă să se indexeze toate firmele (~10-30 min pentru 1.2M)
+- URL: http://localhost/admin
+- Email: `admin@mfirme.ro`
+- Parola: `Admin123!`
 
-### Importă datele existente (dacă ai backup)
+### 2. Sincronizeaza datele
 
-```bash
-# Restaurează MongoDB din backup
-docker exec -i mfirme-mongodb mongorestore --archive < backup.archive
-```
+- Admin -> **Sync** -> Click "Sync Complet"
+- Asteapta pana se sincronizeaza toate colectiile
+
+### 3. Configureaza Elasticsearch
+
+- Admin -> **Elasticsearch** -> "Creeaza Index"
+- Click "Porneste Indexare"
+- Asteapta indexarea (~10-30 min pentru 1.2M firme)
+
+### 4. Configureaza SEO
+
+- Admin -> **SEO** -> Verifica template-urile
+- Admin -> **Sitemap** -> Genereaza sitemap
+- Adauga `https://rapoartefirme.ro/sitemap.xml` in Google Search Console
+
+## Arhitectura Servicii
+
+| Serviciu | Container | Port Intern | Port Extern |
+|----------|-----------|-------------|-------------|
+| MongoDB | rapoartefirme-mongodb | 27017 | 27099 |
+| Elasticsearch | rapoartefirme-elasticsearch | 9200 | 9200 |
+| Backend (FastAPI) | rapoartefirme-backend | 8001 | 8002 |
+| Frontend (React+Nginx) | rapoartefirme-frontend | 80 | 3000 |
+| Nginx (Reverse Proxy) | rapoartefirme-nginx | 80/443 | 80/443 |
 
 ## URL-uri Disponibile
 
-| Serviciu | URL | Descriere |
-|----------|-----|-----------|
-| Frontend | http://localhost | Aplicația principală |
-| Backend API | http://localhost/api | API endpoints |
-| Swagger Docs | http://localhost:8001/docs | Documentație API |
-| Elasticsearch | http://localhost:9200 | Direct ES access |
-| Kibana | http://localhost:5601 | ES Dashboard (trebuie activat) |
+| Serviciu | URL |
+|----------|-----|
+| Site public | https://rapoartefirme.ro |
+| API | https://rapoartefirme.ro/api |
+| Swagger Docs | http://localhost:8002/docs |
+| Elasticsearch | http://localhost:9200 |
 
 ## Comenzi Utile
 
 ```bash
-# Vezi logs în timp real
+# Logs in timp real
 docker compose -f docker-compose.production.yml logs -f
 
-# Logs doar pentru un serviciu
+# Logs doar backend
 docker compose -f docker-compose.production.yml logs -f backend
 
 # Restart toate serviciile
 docker compose -f docker-compose.production.yml restart
 
-# Restart un serviciu specific
+# Restart un serviciu
 docker compose -f docker-compose.production.yml restart backend
 
-# Oprește totul
+# Opreste totul
 docker compose -f docker-compose.production.yml down
 
-# Oprește și șterge datele (ATENȚIE!)
-docker compose -f docker-compose.production.yml down -v
+# Rebuild dupa git pull
+docker compose -f docker-compose.production.yml up -d --build
 
-# Activează Kibana (optional, pentru debug)
+# Activeaza Kibana (optional)
 docker compose -f docker-compose.production.yml --profile debug up kibana -d
 ```
 
-## Structura Fișiere
+## SSL/HTTPS cu Let's Encrypt
 
-```
-mfirme/
-├── docker-compose.production.yml   # Configurare Docker
-├── setup-production.sh             # Script setup automat
-├── .env                            # Variabile environment
-├── backend/
-│   ├── Dockerfile.production       # Docker build backend
-│   ├── server.py                   # FastAPI app
-│   └── routes/
-│       └── elasticsearch_routes.py # ES endpoints
-├── frontend/
-│   ├── Dockerfile.production       # Docker build frontend
-│   └── nginx.conf                  # Nginx config
-└── nginx/
-    └── nginx.conf                  # Reverse proxy config
-```
-
-## Troubleshooting
-
-### Elasticsearch nu pornește
 ```bash
-# Verifică logs
-docker logs mfirme-elasticsearch
+# 1. Instaleaza certbot
+sudo apt install certbot
 
-# Crește limita de memorie virtuală (Linux)
-sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
-```
+# 2. Obtine certificat (opreste nginx temporar)
+docker compose -f docker-compose.production.yml stop nginx
+sudo certbot certonly --standalone -d rapoartefirme.ro -d www.rapoartefirme.ro
 
-### Backend nu se conectează la MongoDB
-```bash
-# Verifică dacă MongoDB e healthy
-docker exec mfirme-mongodb mongosh --eval "db.runCommand('ping')"
+# 3. Copiaza certificatele
+sudo cp /etc/letsencrypt/live/rapoartefirme.ro/fullchain.pem nginx/ssl/cert.pem
+sudo cp /etc/letsencrypt/live/rapoartefirme.ro/privkey.pem nginx/ssl/key.pem
 
-# Restart backend
-docker compose -f docker-compose.production.yml restart backend
-```
-
-### Port 80 ocupat
-```bash
-# Găsește ce folosește portul
-sudo lsof -i :80
-
-# Oprește Apache/Nginx dacă rulează
-sudo systemctl stop apache2
-sudo systemctl stop nginx
+# 4. Activeaza HTTPS in nginx/nginx.conf (decommenteaza blocul SSL)
+# 5. Restart
+docker compose -f docker-compose.production.yml up -d --build nginx
 ```
 
 ## Backup & Restore
 
 ### Backup MongoDB
 ```bash
-docker exec mfirme-mongodb mongodump --archive --gzip > backup_$(date +%Y%m%d).archive.gz
+docker exec rapoartefirme-mongodb mongodump --archive --gzip > backup_$(date +%Y%m%d).archive.gz
 ```
 
 ### Restore MongoDB
 ```bash
-docker exec -i mfirme-mongodb mongorestore --archive --gzip < backup_20240101.archive.gz
+docker exec -i rapoartefirme-mongodb mongorestore --archive --gzip < backup_20260401.archive.gz
 ```
 
-### Backup Elasticsearch
+## Troubleshooting
+
+### Elasticsearch nu porneste
 ```bash
-# Creează snapshot repository și snapshot din Kibana sau API
-curl -X PUT "localhost:9200/_snapshot/backup" -H 'Content-Type: application/json' -d'
-{
-  "type": "fs",
-  "settings": {
-    "location": "/usr/share/elasticsearch/backup"
-  }
-}'
+docker logs rapoartefirme-elasticsearch
+# Fix: sudo sysctl -w vm.max_map_count=262144
 ```
 
-## SSL/HTTPS (Producție)
-
-Pentru HTTPS, adaugă în `nginx/nginx.conf`:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-    
-    ssl_certificate /etc/nginx/ssl/cert.pem;
-    ssl_certificate_key /etc/nginx/ssl/key.pem;
-    
-    # ... restul configurației
-}
-```
-
-Și montează certificatele în docker-compose.yml.
-
----
-
-## Suport
-
-Pentru probleme sau întrebări, verifică logurile:
+### Backend nu se conecteaza la MongoDB
 ```bash
-docker compose -f docker-compose.production.yml logs -f 2>&1 | tee debug.log
+docker exec rapoartefirme-mongodb mongosh --eval "db.runCommand('ping')"
+docker compose -f docker-compose.production.yml restart backend
+```
+
+### Port 80 ocupat
+```bash
+sudo lsof -i :80
+sudo systemctl stop apache2  # sau nginx daca ruleaza separat
+```
+
+### Rebuild complet
+```bash
+docker compose -f docker-compose.production.yml down
+docker compose -f docker-compose.production.yml up -d --build --force-recreate
 ```

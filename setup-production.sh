@@ -1,52 +1,69 @@
 #!/bin/bash
 
 # ===========================================
-# mFirme Production Setup Script
+# RapoarteFirme Production Setup Script
 # ===========================================
 
 set -e
 
 echo "=========================================="
-echo "   mFirme Production Setup"
+echo "   RapoarteFirme - Setup Productie"
 echo "=========================================="
 
 # Check Docker
 if ! command -v docker &> /dev/null; then
-    echo "❌ Docker nu este instalat!"
-    echo "Instalează: curl -fsSL https://get.docker.com | sh"
+    echo "Docker nu este instalat!"
+    echo "Instaleaza: curl -fsSL https://get.docker.com | sh"
     exit 1
 fi
 
 if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "❌ Docker Compose nu este instalat!"
+    echo "Docker Compose nu este instalat!"
     exit 1
 fi
 
-echo "✓ Docker detectat"
+echo "Docker detectat"
 
 # Create .env if not exists
 if [ ! -f .env ]; then
     echo ""
-    echo "Creez fișierul .env..."
+    echo "Creez fisierul .env..."
     cat > .env << EOF
-# mFirme Production Environment
 SECRET_KEY=$(openssl rand -hex 32)
-DOMAIN_URL=http://localhost
+DOMAIN_URL=https://rapoartefirme.ro
+CLOUD_MONGO_URL=
+STRIPE_API_KEY=
 EOF
-    echo "✓ Fișier .env creat"
-    echo "⚠️  Editează .env și setează DOMAIN_URL pentru producție!"
+    echo "Fisier .env creat"
+    echo "IMPORTANT: Editeaza .env si seteaza CLOUD_MONGO_URL si DOMAIN_URL!"
+fi
+
+# Create SSL directory
+mkdir -p nginx/ssl
+
+# Elasticsearch vm.max_map_count
+echo ""
+echo "Verificare vm.max_map_count pentru Elasticsearch..."
+CURRENT_MAP_COUNT=$(sysctl -n vm.max_map_count 2>/dev/null || echo "0")
+if [ "$CURRENT_MAP_COUNT" -lt 262144 ]; then
+    echo "Setez vm.max_map_count=262144..."
+    sudo sysctl -w vm.max_map_count=262144
+    echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf > /dev/null
+    echo "vm.max_map_count setat"
+else
+    echo "vm.max_map_count OK ($CURRENT_MAP_COUNT)"
 fi
 
 # Build and start
 echo ""
-echo "Construiesc și pornesc serviciile..."
+echo "Construiesc si pornesc serviciile..."
 docker compose -f docker-compose.production.yml build --no-cache
 docker compose -f docker-compose.production.yml up -d
 
 # Wait for services
 echo ""
-echo "Aștept ca serviciile să pornească..."
-sleep 10
+echo "Astept ca serviciile sa porneasca..."
+sleep 15
 
 # Check services
 echo ""
@@ -55,53 +72,57 @@ echo "   Status Servicii"
 echo "=========================================="
 docker compose -f docker-compose.production.yml ps
 
-# Test connections
 echo ""
 echo "=========================================="
 echo "   Test Conexiuni"
 echo "=========================================="
 
 # Test MongoDB
-if curl -s http://localhost:27017 > /dev/null 2>&1 || docker exec mfirme-mongodb mongosh --eval "db.runCommand('ping')" > /dev/null 2>&1; then
-    echo "✓ MongoDB: OK"
+if docker exec rapoartefirme-mongodb mongosh --eval "db.runCommand('ping')" > /dev/null 2>&1; then
+    echo "MongoDB: OK"
 else
-    echo "⚠️  MongoDB: Checking..."
+    echo "MongoDB: Se porneste..."
 fi
 
 # Test Elasticsearch
-if curl -s http://localhost:9200 | grep -q "cluster_name"; then
-    echo "✓ Elasticsearch: OK"
+if curl -s http://localhost:9200 | grep -q "cluster_name" 2>/dev/null; then
+    echo "Elasticsearch: OK"
 else
-    echo "⚠️  Elasticsearch: Starting..."
+    echo "Elasticsearch: Se porneste..."
 fi
 
 # Test Backend
-if curl -s http://localhost:8001/api/health > /dev/null 2>&1; then
-    echo "✓ Backend: OK"
+if curl -s http://localhost:8002/api/health | grep -q "ok" 2>/dev/null; then
+    echo "Backend: OK"
 else
-    echo "⚠️  Backend: Starting..."
+    echo "Backend: Se porneste..."
 fi
 
 # Test Frontend
 if curl -s http://localhost:3000 > /dev/null 2>&1; then
-    echo "✓ Frontend: OK"
+    echo "Frontend: OK"
 else
-    echo "⚠️  Frontend: Starting..."
+    echo "Frontend: Se porneste..."
 fi
 
 echo ""
 echo "=========================================="
-echo "   Aplicația este pregătită!"
+echo "   RapoarteFirme este pregatit!"
 echo "=========================================="
 echo ""
-echo "🌐 Frontend:      http://localhost"
-echo "🔧 Backend API:   http://localhost/api"
-echo "🔍 Elasticsearch: http://localhost:9200"
-echo "📊 Kibana:        docker compose -f docker-compose.production.yml --profile debug up kibana"
+echo "Frontend:      http://localhost (sau https://rapoartefirme.ro)"
+echo "Backend API:   http://localhost/api"
+echo "Elasticsearch: http://localhost:9200"
+echo "Kibana:        docker compose -f docker-compose.production.yml --profile debug up kibana -d"
+echo ""
+echo "Admin login: admin@mfirme.ro / Admin123!"
 echo ""
 echo "Comenzi utile:"
 echo "  Logs:     docker compose -f docker-compose.production.yml logs -f"
 echo "  Stop:     docker compose -f docker-compose.production.yml down"
 echo "  Restart:  docker compose -f docker-compose.production.yml restart"
 echo ""
-echo "După pornire, mergi în Admin -> Elasticsearch pentru a indexa firmele!"
+echo "Dupa pornire:"
+echo "  1. Admin -> Sync -> Sincronizeaza datele din Cloud"
+echo "  2. Admin -> Elasticsearch -> Creeaza Index -> Porneste Indexare"
+echo ""

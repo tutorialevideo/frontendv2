@@ -2,18 +2,18 @@ version: '3.8'
 
 services:
   # ===========================================
-  # MongoDB - Baza de date principală
+  # MongoDB - Baza de date principala
   # ===========================================
   mongodb:
     image: mongo:6
-    container_name: mfirme-mongodb
+    container_name: rapoartefirme-mongodb
     restart: always
     ports:
       - "27099:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
-      - mfirme-network
+      - rapoartefirme-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -21,17 +21,17 @@ services:
       retries: 5
 
   # ===========================================
-  # Elasticsearch - Motor de căutare fuzzy
+  # Elasticsearch - Motor de cautare fuzzy
   # ===========================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: mfirme-elasticsearch
+    container_name: rapoartefirme-elasticsearch
     restart: always
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
-      - cluster.name=mfirme-cluster
+      - cluster.name=rapoartefirme-cluster
     ulimits:
       memlock:
         soft: -1
@@ -41,7 +41,7 @@ services:
     ports:
       - "9200:9200"
     networks:
-      - mfirme-network
+      - rapoartefirme-network
     healthcheck:
       test: curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'
       interval: 30s
@@ -55,7 +55,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.production
-    container_name: mfirme-backend
+    container_name: rapoartefirme-backend
     restart: always
     ports:
       - "8002:8001"
@@ -64,7 +64,8 @@ services:
       - APP_MONGO_URL=mongodb://mongodb:27017/mfirme_app
       - CLOUD_MONGO_URL=${CLOUD_MONGO_URL}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - SECRET_KEY=${SECRET_KEY:-mfirme_secret_key_change_in_production}
+      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
       - ENVIRONMENT=production
     depends_on:
       mongodb:
@@ -72,7 +73,7 @@ services:
       elasticsearch:
         condition: service_healthy
     networks:
-      - mfirme-network
+      - rapoartefirme-network
 
   # ===========================================
   # Frontend - React (served by Nginx)
@@ -83,38 +84,40 @@ services:
       dockerfile: Dockerfile.production
       args:
         - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
-    container_name: mfirme-frontend
+    container_name: rapoartefirme-frontend
     restart: always
     ports:
       - "3000:80"
     depends_on:
       - backend
     networks:
-      - mfirme-network
+      - rapoartefirme-network
 
   # ===========================================
   # Nginx - Reverse Proxy
   # ===========================================
   nginx:
     image: nginx:alpine
-    container_name: mfirme-nginx
+    container_name: rapoartefirme-nginx
     restart: always
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
       - frontend
     networks:
-      - mfirme-network
+      - rapoartefirme-network
 
   # ===========================================
   # Kibana - UI pentru Elasticsearch (optional)
   # ===========================================
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: mfirme-kibana
+    container_name: rapoartefirme-kibana
     restart: unless-stopped
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
@@ -123,7 +126,7 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - mfirme-network
+      - rapoartefirme-network
     profiles:
       - debug
 
@@ -132,5 +135,5 @@ volumes:
   elasticsearch_data:
 
 networks:
-  mfirme-network:
+  rapoartefirme-network:
     driver: bridge

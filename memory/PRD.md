@@ -67,7 +67,7 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - Linkuri clickabile judet/localitate/CAEN din profilul firmei
 - Generator Dinamic Sitemap XML
 
-### Session 11 (Current) - Bug Fix LegalInfo Expand + Rebranding
+### Session 11 (Current) - Bug Fix LegalInfo Expand + Rebranding + Docker Production
 **Date: April 2026**
 - FIX: Backend legal_routes.py - mapare corecta campuri (stadiu, categorie, materie, data_modificare)
 - FIX: Frontend LegalInfo.js - expand dosar arata acum Categorie, Stadiu, Materie, Ultima actualizare
@@ -86,6 +86,16 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
   - Raport financiar footer: RapoarteFirme.ro
   - Stripe plan name: RapoarteFirme
   - Nu s-au schimbat: DB names (mfirme_local, mfirme_app), email admin (admin@mfirme.ro), ES index (mfirme_companies)
+- DOCKER PRODUCTION READY:
+  - docker-compose.production.yml - 5 servicii: MongoDB, Elasticsearch, Backend, Frontend, Nginx
+  - backend/Dockerfile.production - Python 3.11, uvicorn cu 4 workers
+  - frontend/Dockerfile.production - yarn build + nginx alpine
+  - nginx/nginx.conf - Reverse proxy cu sitemap URL masking, rate limiting, SSL ready
+  - frontend/nginx.conf - SPA fallback + API proxy + sitemap proxy
+  - requirements.docker.txt - Dependinte actualizate si curate
+  - .env.example - Template producție
+  - setup-production.sh - Script one-command setup
+  - DEPLOYMENT.md - Ghid complet deployment, SSL, backup/restore
 
 ## Database Schema
 
