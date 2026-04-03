@@ -97,15 +97,15 @@ const AdminSyncPage = () => {
     }
   }, [fetchSyncStatus]);
   
-  // Separate effect for polling during sync
+  // Separate effect for polling during sync (also polls when sync is detected as running)
   useEffect(() => {
-    if (!syncing) return;
+    const syncRunning = syncing || syncStatus?.sync_state?.is_running;
+    if (!syncRunning) return;
     
     const interval = setInterval(() => {
       fetchSyncStatus();
-    }, 3000);
+    }, 2000);
 
-    // Stop polling after 60 minutes max
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setSyncing(false);
@@ -115,7 +115,7 @@ const AdminSyncPage = () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [syncing, fetchSyncStatus]);
+  }, [syncing, syncStatus?.sync_state?.is_running, fetchSyncStatus]);
 
   const saveConfig = async () => {
     localStorage.setItem('mongoSyncConfig', JSON.stringify(mongoConfig));
@@ -707,6 +707,34 @@ const AdminSyncPage = () => {
                   className="bg-blue-600 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${syncState.progress || 0}%` }}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Live Sync Log */}
+          {syncState.logs && syncState.logs.length > 0 && (
+            <div className="mt-4 bg-gray-900 rounded-xl p-4 font-mono text-xs" data-testid="sync-log">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 text-xs font-sans font-medium">
+                  {syncState.is_running ? (
+                    <><Loader2 className="w-3 h-3 animate-spin inline mr-1" /> Sync Log (live)</>
+                  ) : (
+                    <><Activity className="w-3 h-3 inline mr-1" /> Sync Log</>
+                  )}
+                </p>
+                <span className="text-gray-500">{syncState.logs.length} mesaje</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-0.5 scrollbar-thin">
+                {syncState.logs.map((log, i) => (
+                  <div key={i} className={`leading-5 ${
+                    log.level === 'error' ? 'text-red-400' :
+                    log.level === 'success' ? 'text-green-400' :
+                    log.level === 'warning' ? 'text-yellow-400' :
+                    'text-gray-300'
+                  }`}>
+                    <span className="text-gray-500">[{log.time}]</span> {log.message}
+                  </div>
+                ))}
               </div>
             </div>
           )}

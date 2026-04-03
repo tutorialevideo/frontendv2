@@ -33,8 +33,21 @@ sync_state = {
     "status": "idle",
     "last_sync": None,
     "errors": [],
-    "collections_status": {}
+    "collections_status": {},
+    "logs": []
 }
+
+MAX_LOGS = 100
+
+def add_sync_log(message, level="info"):
+    """Add a log entry to sync state"""
+    sync_state["logs"].append({
+        "time": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+        "message": message,
+        "level": level
+    })
+    if len(sync_state["logs"]) > MAX_LOGS:
+        sync_state["logs"] = sync_state["logs"][-MAX_LOGS:]
 
 BATCH_SIZE = 5000
 
@@ -69,10 +82,11 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
         sync_state["synced"] = 0
         sync_state["progress"] = 0
         
-        logger.info(f"Starting sync for {collection_name}: {total_count:,} documents")
+        add_sync_log(f"Start sync {collection_name}: {total_count:,} documente")
         
         # Clear local collection
         await local_db[collection_name].delete_many({})
+        add_sync_log(f"{collection_name}: colecția locală curățată")
         
         # Sync in batches
         synced = 0
@@ -94,7 +108,7 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
                 sync_state["synced"] = synced
                 sync_state["progress"] = int((synced / total_count) * 100) if total_count > 0 else 100
                 
-                logger.info(f"  {collection_name}: {synced:,}/{total_count:,} ({sync_state['progress']}%) skipped: {skipped:,}")
+                add_sync_log(f"{collection_name}: {synced:,}/{total_count:,} ({sync_state['progress']}%) | skip: {skipped:,}")
                 batch = []
         
         # Insert remaining
@@ -109,6 +123,7 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
         
         # Create indexes
         await create_indexes(local_db, collection_name)
+        add_sync_log(f"{collection_name}: indexuri create")
         
         end_time = datetime.now(timezone.utc)
         duration = (end_time - start_time).total_seconds()
@@ -133,7 +148,7 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
             upsert=True
         )
         
-        logger.info(f"✓ Completed sync for {collection_name}: {synced:,} docs in {duration:.1f}s")
+        add_sync_log(f"✓ {collection_name} complet: {synced:,} docs în {duration:.0f}s", "success")
         
         return {
             "collection": collection_name,
@@ -144,6 +159,7 @@ async def sync_collection(cloud_db, local_db, collection_name: str) -> Dict[str,
         
     except Exception as e:
         logger.error(f"Error syncing {collection_name}: {e}")
+        add_sync_log(f"✗ Eroare {collection_name}: {str(e)}", "error")
         sync_state["errors"].append({
             "collection": collection_name,
             "error": str(e),
@@ -214,18 +230,24 @@ async def run_full_sync(cloud_db, local_db, collections: list):
     sync_state["is_running"] = True
     sync_state["status"] = "running"
     sync_state["errors"] = []
+    sync_state["logs"] = []
+    
+    add_sync_log(f"Sync pornit pentru: {', '.join(collections)}")
     
     results = {}
     
     for collection in collections:
         if not sync_state["is_running"]:
+            add_sync_log("Sync oprit de utilizator", "warning")
             break
         results[collection] = await sync_collection(cloud_db, local_db, collection)
     
     sync_state["is_running"] = False
-    sync_state["status"] = "idle"
+    sync_state["status"] = "completed"
     sync_state["current_collection"] = None
     sync_state["last_sync"] = datetime.now(timezone.utc).isoformat()
+    
+    add_sync_log("Sincronizare completă!", "success")
     
     return results
 
@@ -300,7 +322,8 @@ async def get_sync_status(admin_user = Depends(verify_admin)):
             "total": sync_state["total"],
             "last_sync": sync_state["last_sync"],
             "collections_status": sync_state["collections_status"],
-            "errors": sync_state["errors"][-5:]  # Last 5 errors
+            "errors": sync_state["errors"][-5:],
+            "logs": sync_state["logs"][-30:]
         }
     }
 
