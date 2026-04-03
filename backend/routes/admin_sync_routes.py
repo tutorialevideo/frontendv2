@@ -474,7 +474,7 @@ async def get_local_db_stats(admin_user = Depends(verify_admin)):
     
     try:
         stats = {}
-        collections = ['firme', 'bilanturi', 'caen_codes', 'postal_codes', 'localities', 'sync_status']
+        collections = ['firme', 'bilanturi', 'dosare', 'bpi_records', 'lichidatori', 'caen_codes', 'postal_codes', 'localities', 'sync_status']
         
         for col in collections:
             try:
