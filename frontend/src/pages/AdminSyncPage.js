@@ -151,14 +151,6 @@ const AdminSyncPage = () => {
     }
   };
 
-  const triggerFullSync = async () => {
-    if (!window.confirm('Aceasta va sincroniza toate colecțiile (~1.2M firme). Poate dura 10-30 minute. Continui?')) {
-      return;
-    }
-
-    setSyncing(true);
-    setError(null);
-
   const triggerRefImport = async () => {
     if (!window.confirm('Import coduri CAEN, coduri poștale și localități? (durează ~1 min)')) return;
     
@@ -173,7 +165,6 @@ const AdminSyncPage = () => {
       try { data = JSON.parse(text); } catch(e) {}
       
       if (response.ok) {
-        // Poll import status
         const pollInterval = setInterval(async () => {
           try {
             const statusRes = await fetch(`${API_URL}/api/admin/sync/import-status`, {
@@ -210,6 +201,14 @@ const AdminSyncPage = () => {
       setImportingRef(false);
     }
   };
+
+  const triggerFullSync = async () => {
+    if (!window.confirm('Aceasta va sincroniza toate colecțiile (~1.2M firme). Poate dura 10-30 minute. Continui?')) {
+      return;
+    }
+
+    setSyncing(true);
+    setError(null);
     
     const syncUrl = `${API_URL}/api/admin/sync/direct-sync`;
     console.log('=== SYNC DEBUG ===');
