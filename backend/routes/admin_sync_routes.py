@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import asyncio
+import re
 import os
 from datetime import datetime, timezone
 from auth import get_current_user
@@ -16,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne
 from pymongo.errors import BulkWriteError
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -510,3 +512,199 @@ async def trigger_collection_sync_legacy(
 ):
     """Legacy endpoint - redirects to direct-sync"""
     return await trigger_direct_sync(background_tasks, collection_name, admin_user)
+
+
+# ============================================================
+# Import Reference Data (CAEN codes, postal codes, localities)
+# These are NOT in cloud Atlas - imported from external sources
+# ============================================================
+
+import_state = {
+    "is_running": False,
+    "status": "idle",
+    "progress": "",
+    "error": None
+}
+
+
+@router.get("/import-status")
+async def get_import_status(admin_user = Depends(verify_admin)):
+    """Get status of reference data import"""
+    return import_state
+
+
+@router.post("/import-reference-data")
+async def import_reference_data(
+    background_tasks: BackgroundTasks,
+    admin_user = Depends(verify_admin)
+):
+    """Import CAEN codes, postal codes and localities into local DB"""
+    global import_state
+    
+    if import_state["is_running"]:
+        raise HTTPException(status_code=409, detail="Import already running")
+    
+    local_db = get_local_db()
+    if local_db is None:
+        raise HTTPException(status_code=400, detail="Local DB not connected")
+    
+    import_state["is_running"] = True
+    import_state["status"] = "starting"
+    import_state["error"] = None
+    
+    background_tasks.add_task(run_reference_import, local_db)
+    
+    return {"status": "started", "message": "Import date de referință pornit"}
+
+
+async def run_reference_import(local_db):
+    """Background task to import all reference data"""
+    global import_state
+    
+    try:
+        # 1. Import CAEN codes
+        import_state["status"] = "importing"
+        import_state["progress"] = "Import coduri CAEN..."
+        await import_caen_codes(local_db)
+        
+        # 2. Import postal codes + localities
+        import_state["progress"] = "Download și import coduri poștale..."
+        await import_postal_codes(local_db)
+        
+        import_state["status"] = "completed"
+        import_state["progress"] = "Import complet!"
+        logger.info("Reference data import completed successfully")
+        
+    except Exception as e:
+        import_state["status"] = "error"
+        import_state["error"] = str(e)
+        logger.error(f"Reference data import error: {e}")
+    finally:
+        import_state["is_running"] = False
+
+
+async def import_caen_codes(local_db):
+    """Import CAEN Rev.2 codes from embedded data"""
+    from scripts.import_caen_codes import CAEN_REV2_CODES
+    
+    await local_db.caen_codes.drop()
+    
+    docs = []
+    for code, description in CAEN_REV2_CODES:
+        section = code[0:2]
+        docs.append({
+            "cod": code,
+            "name": description,
+            "description": description,
+            "section": section
+        })
+    
+    if docs:
+        await local_db.caen_codes.insert_many(docs)
+        await local_db.caen_codes.create_index("cod", unique=True)
+    
+    import_state["progress"] = f"CAEN: {len(docs)} coduri importate"
+    logger.info(f"Imported {len(docs)} CAEN codes")
+
+
+async def import_postal_codes(local_db):
+    """Import postal codes from GitHub SQL file and create localities"""
+    
+    INSERT_PATTERN = re.compile(
+        r"\((\d+),\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)'\)"
+    )
+    
+    DIACRITICS = {
+        'ş': 's', 'Ş': 'S', 'ș': 's', 'Ș': 'S',
+        'ţ': 't', 'Ţ': 'T', 'ț': 't', 'Ț': 'T',
+        'ă': 'a', 'Ă': 'A', 'â': 'a', 'Â': 'A',
+        'î': 'i', 'Î': 'I'
+    }
+    
+    def normalize(text):
+        result = re.sub(r'\([^)]*\)', '', text).strip()
+        for old, new in DIACRITICS.items():
+            result = result.replace(old, new)
+        return result.upper()
+    
+    # Download SQL file
+    sql_url = "https://raw.githubusercontent.com/romania/localitati/refs/heads/master/coduri_postale.sql"
+    
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.get(sql_url)
+        if response.status_code != 200:
+            raise Exception(f"Failed to download postal codes: HTTP {response.status_code}")
+        sql_content = response.text
+    
+    # Parse SQL
+    records = []
+    for match in INSERT_PATTERN.finditer(sql_content):
+        record = {
+            'id': int(match.group(1)),
+            'judet': match.group(2).strip(),
+            'localitate': match.group(3).strip(),
+            'tip_artera': match.group(4).strip() or None,
+            'denumire_artera': match.group(5).strip() or None,
+            'numar_bloc': match.group(6).strip() or None,
+            'cod_postal': match.group(7).strip(),
+            'judet_normalized': normalize(match.group(2).strip()),
+            'localitate_normalized': normalize(match.group(3).strip())
+        }
+        records.append(record)
+    
+    if not records:
+        raise Exception("No postal codes found in SQL file")
+    
+    import_state["progress"] = f"Coduri poștale: {len(records)} parsed, inserting..."
+    
+    # Insert postal codes
+    await local_db.postal_codes.drop()
+    batch_size = 5000
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
+        await local_db.postal_codes.insert_many(batch)
+    
+    await local_db.postal_codes.create_index("cod_postal")
+    await local_db.postal_codes.create_index("judet")
+    await local_db.postal_codes.create_index("judet_normalized")
+    await local_db.postal_codes.create_index("localitate_normalized")
+    await local_db.postal_codes.create_index([("judet_normalized", 1), ("localitate_normalized", 1)])
+    
+    import_state["progress"] = f"Coduri poștale: {len(records)} importate. Generez localități..."
+    logger.info(f"Imported {len(records)} postal codes")
+    
+    # Create localities (aggregated from postal codes)
+    pipeline = [
+        {"$group": {
+            "_id": {
+                "judet": "$judet",
+                "judet_normalized": "$judet_normalized",
+                "localitate": "$localitate",
+                "localitate_normalized": "$localitate_normalized"
+            },
+            "postal_codes": {"$addToSet": "$cod_postal"},
+            "count": {"$sum": 1}
+        }},
+        {"$project": {
+            "_id": 0,
+            "judet": "$_id.judet",
+            "judet_normalized": "$_id.judet_normalized",
+            "localitate": "$_id.localitate",
+            "localitate_normalized": "$_id.localitate_normalized",
+            "postal_codes": 1,
+            "postal_code_count": "$count",
+            "primary_postal_code": {"$arrayElemAt": ["$postal_codes", 0]}
+        }}
+    ]
+    
+    await local_db.localities.drop()
+    localities = await local_db.postal_codes.aggregate(pipeline).to_list(length=None)
+    
+    if localities:
+        await local_db.localities.insert_many(localities)
+        await local_db.localities.create_index([("judet_normalized", 1), ("localitate_normalized", 1)])
+        await local_db.localities.create_index("localitate_normalized")
+        await local_db.localities.create_index("judet")
+    
+    import_state["progress"] = f"Complet: {len(records)} coduri poștale, {len(localities)} localități, CAEN ok"
+    logger.info(f"Created {len(localities)} localities")

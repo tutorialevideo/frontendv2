@@ -26,6 +26,8 @@ const AdminSyncPage = () => {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [importingRef, setImportingRef] = useState(false);
+  const [importStatus, setImportStatus] = useState(null);
   
   // MongoDB connection settings
   const [mongoConfig, setMongoConfig] = useState({
@@ -156,6 +158,58 @@ const AdminSyncPage = () => {
 
     setSyncing(true);
     setError(null);
+
+  const triggerRefImport = async () => {
+    if (!window.confirm('Import coduri CAEN, coduri poștale și localități? (durează ~1 min)')) return;
+    
+    setImportingRef(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/sync/import-reference-data`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch(e) {}
+      
+      if (response.ok) {
+        // Poll import status
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`${API_URL}/api/admin/sync/import-status`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const statusText = await statusRes.text();
+            let statusData = null;
+            try { statusData = JSON.parse(statusText); } catch(e) {}
+            
+            if (statusData) {
+              setImportStatus(statusData);
+              if (!statusData.is_running) {
+                clearInterval(pollInterval);
+                setImportingRef(false);
+                fetchSyncStatus();
+                if (statusData.status === 'completed') {
+                  alert('Import date de referință complet!');
+                } else if (statusData.error) {
+                  alert(`Eroare import: ${statusData.error}`);
+                }
+              }
+            }
+          } catch(e) {
+            clearInterval(pollInterval);
+            setImportingRef(false);
+          }
+        }, 2000);
+      } else {
+        alert(`Eroare: ${data?.detail || response.statusText}`);
+        setImportingRef(false);
+      }
+    } catch(err) {
+      alert(`Eroare: ${err.message}`);
+      setImportingRef(false);
+    }
+  };
     
     const syncUrl = `${API_URL}/api/admin/sync/direct-sync`;
     console.log('=== SYNC DEBUG ===');
@@ -604,7 +658,34 @@ const AdminSyncPage = () => {
             >
               Sync Lichidatori
             </button>
+
+            <button
+              onClick={triggerRefImport}
+              disabled={importingRef || syncing}
+              data-testid="import-reference-btn"
+              className="flex items-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {importingRef ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4" />
+              )}
+              Import CAEN + Coduri Poștale
+            </button>
           </div>
+
+          {/* Reference Import Progress */}
+          {(importingRef || (importStatus && importStatus.status === 'importing')) && (
+            <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                <div>
+                  <p className="font-medium text-emerald-800">Import date de referință</p>
+                  <p className="text-sm text-emerald-600">{importStatus?.progress || 'Se pornește...'}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Sync Progress */}
           {(syncing || syncState.is_running) && (
