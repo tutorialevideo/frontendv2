@@ -18,7 +18,8 @@ import {
   Database,
   Search,
   Globe,
-  ChevronDown
+  ChevronDown,
+  Wrench
 } from 'lucide-react';
 
 const AdminLayout = ({ children }) => {
@@ -27,18 +28,23 @@ const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [seoOpen, setSeoOpen] = useState(location.pathname.startsWith('/admin/seo'));
+  const [dbOpen, setDbOpen] = useState(location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db'));
 
   const navigationItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Firme', path: '/admin/companies', icon: Building2 },
     { name: 'Utilizatori', path: '/admin/users', icon: Users },
-    { name: 'Sincronizare DB', path: '/admin/sync', icon: Database },
     { name: 'Elasticsearch', path: '/admin/elasticsearch', icon: Search },
     { name: 'Abonamente', path: '/admin/subscriptions', icon: CreditCard },
     { name: 'Plăți', path: '/admin/payments', icon: DollarSign },
     { name: 'API Keys', path: '/admin/api-keys', icon: Key },
     { name: 'Analiză Financiară', path: '/admin/financial', icon: BarChart3 },
     { name: 'Audit Log', path: '/admin/audit', icon: ScrollText },
+  ];
+
+  const dbSubItems = [
+    { name: 'Sincronizare', path: '/admin/sync' },
+    { name: 'Optimizare DB', path: '/admin/db-optimize' },
   ];
 
   const seoSubItems = [
@@ -122,6 +128,46 @@ const AdminLayout = ({ children }) => {
                 </Link>
               );
             })}
+
+            {/* DB submenu */}
+            <div>
+              <button
+                onClick={() => setDbOpen(!dbOpen)}
+                data-testid="admin-nav-baza-de-date"
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
+                  location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db')
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Database className="w-5 h-5" />
+                  <span className="font-medium">Baza de Date</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${dbOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {dbOpen && (
+                <div className="ml-4 mt-1 space-y-0.5">
+                  {dbSubItems.map((sub) => (
+                    <Link
+                      key={sub.path}
+                      to={sub.path}
+                      data-testid={`admin-nav-${sub.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      className={`flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                        location.pathname === sub.path
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                      onClick={() => {
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* SEO submenu */}
             <div>

@@ -55,6 +55,7 @@ from routes.legal_routes import router as legal_router
 from routes.location_routes import router as location_router
 from routes.caen_routes import router as caen_router
 from routes.sitemap_routes import router as sitemap_router
+from routes.admin_db_routes import router as admin_db_router
 
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -75,6 +76,7 @@ app.include_router(legal_router)
 app.include_router(location_router)
 app.include_router(caen_router)
 app.include_router(sitemap_router)
+app.include_router(admin_db_router)
 
 # Clean sitemap URLs at domain root level (alias routes)
 # These are served by the same backend endpoints but at /api/sitemap.xml etc.
