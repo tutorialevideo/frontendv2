@@ -361,18 +361,6 @@ const SearchPage = ({ initialFilters = {} }) => {
                           <Printer className="w-3.5 h-3.5" />
                         </span>
                       )}
-
-                      {/* Financial */}
-                      {company.mf_cifra_afaceri != null && (
-                        <span className="font-semibold text-blue-600 text-[11px]">
-                          {company.mf_cifra_afaceri >= 1000000
-                            ? `${(company.mf_cifra_afaceri / 1000000).toFixed(1)}M`
-                            : company.mf_cifra_afaceri >= 1000
-                              ? `${(company.mf_cifra_afaceri / 1000).toFixed(0)}K`
-                              : company.mf_cifra_afaceri.toLocaleString('ro-RO')
-                          } RON
-                        </span>
-                      )}
                     </div>
 
                     <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-colors" />
