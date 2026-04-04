@@ -97,6 +97,16 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
   - setup-production.sh - Script one-command setup
   - DEPLOYMENT.md - Ghid complet deployment, SSL, backup/restore
 
+### Session 12 - PageSpeed Optimization
+**Date: April 2026**
+- CODE SPLITTING: React.lazy() + Suspense pe toate cele 25+ pagini din App.js
+- LAZY LOADING: FinancialChart (Recharts), LegalInfo, FinancialIndicators se incarca on-demand pe CompanyPage
+- FONT OPTIMIZATION: Mutat Google Fonts din CSS @import (render-blocking) in HTML link tags cu preconnect
+- NGINX GZIP: Redus gzip_min_length de la 1024 la 256, adaugat gzip_comp_level 6, extins gzip_types
+- NGINX CACHE: Adaugat Cache-Control headers (1y, immutable) pentru assets statice in nginx.conf productie
+- CLEANUP: Eliminat badge Emergent din index.html, eliminat font Inter nefolosit, setat lang="ro"
+- Bundle main.js redus la ~278K (de la estimat 600K+ monolitic), Recharts in chunk separat 380K
+
 ## Database Schema
 
 ### mfirme_local (Local MongoDB - PRIMARY reads)
