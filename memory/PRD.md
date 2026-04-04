@@ -10,66 +10,77 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - **Authentication**: JWT
 - **Search**: Elasticsearch
 
+## Architecture (after refactoring)
+```
+/app/backend/
+  server.py              (~107 lines - orchestration only)
+  database.py            (DB connections)
+  auth.py                (JWT auth)
+  utils.py               (helpers)
+  routes/
+    search_routes.py     (NEW - search + suggest)
+    company_routes.py    (NEW - company CUI/slug/financials)
+    geo_routes.py        (NEW - judete/localitati/caen/stats)
+    admin_sync_routes.py (+ auto-indexing after sync)
+    admin_db_routes.py   (DB optimization + qmark normalization)
+    location_routes.py   (location pages + top firme)
+    caen_routes.py       (CAEN pages)
+    financial_routes.py  (financial detail routes)
+    legal_routes.py      (legal/court/BPI routes)
+    sitemap_routes.py    (XML sitemap generation)
+    seo_routes.py        (SEO templates)
+    auth_routes.py       (login/register)
+    ... (other admin/user routes)
+```
+
 ## What's Been Implemented
 
-### Sessions 1-10 - Core Platform
-- Search, company profiles, user auth (JWT), favorites, admin dashboard
-- Financial charts, KPIs, CAEN codes, postal codes
-- Credits system, hybrid database architecture
-- Dynamic SEO templates, financial analysis for accountants
-- Legal info (JUST + BPI), locations/CAEN navigation
-- Full sync Atlas->Local (2.38M firme)
+### Sessions 1-15 - Core Platform + All Features
+(See previous PRD entries)
 
-### Session 11 - Bug Fixes + Rebranding + Docker
-- LegalInfo expand fix, mFirme->RapoarteFirme rebranding
-- Docker production setup (5 services)
-
-### Session 12 - PageSpeed Optimization
-- React.lazy() code splitting, font optimization, nginx gzip/cache
-
-### Session 13 - Top Firme
-- Top companies ranking per county/locality/CAEN with pagination and sorting
-
-### Session 14 - DB Optimization Admin
-- 12 recommended indexes, health score, diacritics normalization (ş→ș, ţ→ț)
-- In-memory cache for heavy aggregations (24s→0.14s)
-- Docker production tuning for 128GB RAM server
-
-### Session 15 - CUI Type Fix + SEO
-- Fix CUI int/string mismatch in MongoDB queries ($or fallback)
-- Complete SEO tags (Helmet, canonical, meta descriptions) on all pages
-- Sitemap XML expanded to all 2.38M companies
-
-### Session 16 (Current) - Question Mark Normalization
+### Session 16 - Question Mark Normalization + Refactoring
 **Date: April 2026**
-- BACKEND: Smart heuristic function `_guess_qmark()` that determines if `?` should be `Ș` or `Ț` based on linguistic context (position, surrounding characters, Romanian language rules)
-- BACKEND: `_is_real_qmark()` function that distinguishes real question marks (like "AUZI ? PRODUCTIONS SRL") from corrupted diacritics
-- BACKEND: Endpoints `GET /api/admin/db/qmark-preview` and `POST /api/admin/db/qmark-normalize` with confidence levels (high/medium/low)
-- FRONTEND: New "Corectare Caractere Corupte (?)" section in AdminDbOptimizePage with scan button, confidence filters, preview table, and apply button
-- RESULTS: First batch fixed 230 firms automatically. Second batch identified 84 more (word-end patterns). Only 4 records with real `?` marks correctly skipped.
-- Confidence: 57 high, 26 medium, 1 low (false positive: `MA + MA WHAT? SRL`)
 
-## Database Schema
+#### Question Mark Normalization (? -> S/T)
+- Smart heuristic `_guess_qmark()` with linguistic context rules
+- `_is_real_qmark()` to skip real question marks
+- Endpoints: `GET /api/admin/db/qmark-preview`, `POST /api/admin/db/qmark-normalize`
+- Frontend: "Corectare Caractere Corupte (?)" section in Admin DB Optimize
+- Results: 230 firms auto-fixed, 84 more identified (word-end patterns)
 
-### mfirme_local (Local MongoDB - PRIMARY reads)
-- `firme` - 2,381,831 companies. CUI is mixed-type (str/int). 12 custom indexes.
-- `bilanturi` - Financial data (firma_id -> firme.id)
-- `dosare` - Court cases
-- `bpi_records` - BPI insolvency records
-- `caen_codes` - 615 CAEN Rev.2 codes
-- `postal_codes` - 55,123 Romanian postal codes
+#### server.py Refactoring (603 -> 107 lines)
+- Extracted search endpoints to `routes/search_routes.py`
+- Extracted company endpoints to `routes/company_routes.py`
+- Extracted geo/stats endpoints to `routes/geo_routes.py`
+- server.py now contains only app creation, middleware, router includes, and sitemap aliases
 
-### mfirme_app (Read-Write)
-- `users`, `company_overrides`, `audit_logs`, `user_credits`, `app_settings`, `credit_transactions`, `seo_settings`, `api_keys`
+#### Auto-Indexing After Sync
+- After `run_full_sync()` completes, all 12 RECOMMENDED_INDEXES are auto-created
+- Only creates indexes that don't already exist (safe for re-runs)
+- Logged in sync state for admin visibility
 
 ## Key API Endpoints
-- `GET /api/search` - Search companies
-- `GET /api/company/cui/{cui}` - Get company by CUI ($or int/str)
-- `GET /api/locations/judet/{slug}/top-firme` - Top companies per county
-- `GET /api/admin/db/stats` - DB statistics
-- `GET /api/admin/db/qmark-preview` - Preview ? → Ș/Ț replacements
-- `POST /api/admin/db/qmark-normalize` - Apply replacements
-- `GET /api/sitemap/index.xml` - Sitemap index
+- `GET /api/search` - Search companies (search_routes.py)
+- `GET /api/search/suggest` - Autocomplete (search_routes.py)
+- `GET /api/company/cui/{cui}` - Company by CUI (company_routes.py)
+- `GET /api/company/slug/{slug}` - Company by slug (company_routes.py)
+- `GET /api/company/{cui}/financials` - Financial data (company_routes.py)
+- `GET /api/geo/judete` - Counties list (geo_routes.py)
+- `GET /api/geo/localitati` - Localities list (geo_routes.py)
+- `GET /api/caen/top` - Top CAEN codes (geo_routes.py)
+- `GET /api/stats/overview` - Platform stats (geo_routes.py)
+- `GET /api/admin/db/stats` - DB health (admin_db_routes.py)
+- `GET /api/admin/db/qmark-preview` - Preview qmark fixes (admin_db_routes.py)
+- `POST /api/admin/db/qmark-normalize` - Apply qmark fixes (admin_db_routes.py)
+- `GET /api/sitemap.xml` - Sitemap index
+
+## Database Schema
+- `firme`: 2,381,831 companies. CUI mixed-type (str/int). 12+ indexes.
+- `bilanturi`: Financial data
+- `dosare`: Court cases
+- `bpi_records`: BPI insolvency
+- `caen_codes`: 615 CAEN Rev.2 codes
+- `postal_codes`: 55,123 postal codes
 
 ## Prioritized Backlog
 
@@ -86,13 +97,11 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - [ ] Email alerts for company indicator changes
 - [ ] Company comparison tool
 - [ ] Industry analytics dashboard
-- [ ] Auto-index after sync_all
 
 ## Notes for Next Developer
 1. CUI queries MUST use `$or` with both `str(cui)` and `int(cui)` — Atlas stores CUI as integer
 2. Use `yarn` for frontend deps (npm breaks build)
 3. Admin: admin@mfirme.ro / Admin123!
 4. Stripe checkout is MOCKED
-5. `server.py` is 600+ lines — needs refactoring into routes/
-6. Elasticsearch indexes ALL companies (not just active)
-7. Question mark normalization: 230 fixed automatically, 84 remaining need admin review via Admin > Baza de Date > Optimizare DB
+5. Elasticsearch indexes ALL companies (not just active)
+6. Auto-indexing runs after every sync (RECOMMENDED_INDEXES from admin_db_routes.py)
