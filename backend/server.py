@@ -8,8 +8,11 @@ from auth import get_current_user_optional
 from typing import Optional, List
 import re
 import os
+import logging
 from urllib.parse import unquote
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -20,6 +23,24 @@ load_dotenv(dotenv_path=env_path)
 async def lifespan(app: FastAPI):
     # Startup
     await connect_to_databases()
+    # Pre-warm caches in background (non-blocking)
+    import asyncio
+    async def _warm_caches():
+        try:
+            await asyncio.sleep(2)
+            from database import get_local_db
+            from routes.location_routes import get_judet_groups
+            from routes.caen_routes import _get_caen_counts
+            db = get_local_db()
+            if db is not None:
+                logger.info("Pre-warming judet cache...")
+                await get_judet_groups(db)
+                logger.info("Pre-warming CAEN cache...")
+                await _get_caen_counts(db)
+                logger.info("Caches pre-warmed successfully")
+        except Exception as e:
+            logger.warning(f"Cache pre-warm failed (non-critical): {e}")
+    asyncio.create_task(_warm_caches())
     yield
     # Shutdown
     await close_database_connections()

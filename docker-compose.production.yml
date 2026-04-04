@@ -3,6 +3,7 @@ version: '3.8'
 services:
   # ===========================================
   # MongoDB - Baza de date principala
+  # Optimizat pentru 128GB RAM server
   # ===========================================
   mongodb:
     image: mongo:6
@@ -14,14 +15,24 @@ services:
       - mongodb_data:/data/db
     networks:
       - rapoartefirme-network
+    command: >
+      mongod
+      --wiredTigerCacheSizeGB 40
+      --wiredTigerCollectionBlockCompressor zstd
+      --wiredTigerJournalCompressor zstd
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 50G
 
   # ===========================================
   # Elasticsearch - Motor de cautare fuzzy
+  # Optimizat: 8GB heap pentru indexare rapida
   # ===========================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
@@ -30,7 +41,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "ES_JAVA_OPTS=-Xms8g -Xmx8g"
       - cluster.name=rapoartefirme-cluster
     ulimits:
       memlock:
@@ -47,9 +58,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 12G
 
   # ===========================================
   # Backend - FastAPI
+  # 8 workers pentru 12 CPU threads
   # ===========================================
   backend:
     build:
@@ -67,6 +83,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - STRIPE_API_KEY=${STRIPE_API_KEY}
       - ENVIRONMENT=production
+      - UVICORN_WORKERS=8
     depends_on:
       mongodb:
         condition: service_healthy
@@ -74,6 +91,10 @@ services:
         condition: service_healthy
     networks:
       - rapoartefirme-network
+    deploy:
+      resources:
+        limits:
+          memory: 8G
 
   # ===========================================
   # Frontend - React (served by Nginx)
@@ -95,6 +116,7 @@ services:
 
   # ===========================================
   # Nginx - Reverse Proxy
+  # Optimizat: auto worker processes
   # ===========================================
   nginx:
     image: nginx:alpine
