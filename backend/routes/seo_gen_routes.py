@@ -34,7 +34,10 @@ gen_state = {
 
 SEO_PROMPT_TEMPLATE = """Generează o descriere SEO în limba română pentru această firmă românească.
 Descrierea trebuie să aibă între 150-200 de cuvinte, să fie informativă și optimizată pentru motoare de căutare.
-Include cuvinte cheie relevante pentru domeniul de activitate.
+
+IMPORTANT: Activitatea principală a firmei este definită de codul CAEN, NU de denumirea firmei.
+Denumirea firmei este doar un brand/nume comercial și poate fi complet diferită de activitate.
+Bazează descrierea pe ACTIVITATEA PRINCIPALĂ (CAEN) și pe datele financiare, nu pe numele firmei.
 
 Date firmă:
 - Denumire: {denumire}
@@ -42,7 +45,7 @@ Date firmă:
 - Forma juridică: {forma_juridica}
 - Județ: {judet}
 - Localitate: {localitate}
-- Cod CAEN: {caen} ({caen_desc})
+- ACTIVITATEA PRINCIPALĂ (CAEN {caen}): {caen_desc}
 - Stare ANAF: {stare}
 - Cifra de afaceri: {cifra_afaceri}
 - Profit net: {profit_net}
@@ -140,7 +143,8 @@ async def _run_batch_generation(concurrency: int, limit: int):
     cursor = db.firme.find(query, {"_id": 0, "cui": 1, "denumire": 1, "forma_juridica": 1,
                                     "judet": 1, "localitate": 1, "anaf_cod_caen": 1,
                                     "anaf_stare": 1, "mf_cifra_afaceri": 1, "mf_profit_net": 1,
-                                    "mf_numar_angajati": 1, "mf_an_bilant": 1}).sort(
+                                    "mf_numar_angajati": 1, "mf_an_bilant": 1,
+                                    "caen_description": 1}).sort(
         "mf_cifra_afaceri", -1
     )
 
@@ -157,7 +161,8 @@ async def _run_batch_generation(concurrency: int, limit: int):
 
             cui = company.get("cui")
             caen = company.get("anaf_cod_caen", "")
-            caen_desc = caen_map.get(str(caen)[:4], "")
+            # Prefer caen_description from the document itself, fallback to caen_map
+            caen_desc = company.get("caen_description") or caen_map.get(str(caen)[:4], "")
 
             try:
                 text = await _generate_one(api_key, company, caen_desc)
@@ -277,8 +282,11 @@ async def preview_seo(cui: str, current_user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Firma nu a fost găsită")
 
     caen = str(company.get("anaf_cod_caen", ""))[:4]
-    caen_doc = await db.caen_codes.find_one({"cod": caen}, {"_id": 0, "denumire": 1})
-    caen_desc = caen_doc.get("denumire", "") if caen_doc else ""
+    # Prefer caen_description from document, fallback to caen_codes collection
+    caen_desc = company.get("caen_description", "")
+    if not caen_desc:
+        caen_doc = await db.caen_codes.find_one({"cod": caen}, {"_id": 0, "denumire": 1})
+        caen_desc = caen_doc.get("denumire", "") if caen_doc else ""
 
     text = await _generate_one(api_key, company, caen_desc)
     return {
