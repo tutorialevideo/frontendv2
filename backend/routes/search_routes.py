@@ -38,8 +38,9 @@ async def search_suggest(q: str = Query(..., min_length=2)):
         })
 
     if q.isdigit() and len(suggestions) < 10:
+        int_val = int(q)
         cui_results = await db.firme.find(
-            {"cui": {"$regex": cui_pattern}},
+            {"$or": [{"cui": q}, {"cui": int_val}]},
             {"denumire": 1, "cui": 1, "judet": 1, "localitate": 1},
         ).limit(5).to_list(length=5)
 
@@ -72,11 +73,11 @@ async def search_companies(
 
     if q:
         if q.isdigit():
-            # CUI might be stored as string or int — search both
+            # CUI stored as string or int in Atlas — search both, no $regex on numbers
+            int_val = int(q)
             query["$or"] = [
                 {"cui": q},
-                {"cui": int(q)},
-                {"cui": {"$regex": f"^{re.escape(q)}"}},
+                {"cui": int_val},
             ]
         else:
             query["denumire"] = {"$regex": re.escape(q), "$options": "i"}
