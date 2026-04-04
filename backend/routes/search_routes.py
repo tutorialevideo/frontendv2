@@ -110,6 +110,8 @@ async def search_companies(
             "mf_cifra_afaceri": result.get("mf_cifra_afaceri"),
             "mf_numar_angajati": result.get("mf_numar_angajati"),
             "mf_an_bilant": result.get("mf_an_bilant"),
+            "anaf_telefon": result.get("anaf_telefon"),
+            "anaf_fax": result.get("anaf_fax"),
         })
 
     return {

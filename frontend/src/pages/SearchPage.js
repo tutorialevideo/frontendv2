@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Building2, TrendingUp, ChevronRight, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, MapPin, Building2, TrendingUp, ChevronRight, X, Phone, Printer } from 'lucide-react';
 import { useSeoTemplate } from '../hooks/useSeoTemplate';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
+
+// Helper to create slug from judet name
+const judetSlug = (judet) => {
+  if (!judet) return '';
+  return judet.toLowerCase()
+    .replace(/ș|ş/g, 's').replace(/ț|ţ/g, 't')
+    .replace(/ă/g, 'a').replace(/â|î/g, 'i')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+};
+
+const localitateSlug = (loc) => {
+  if (!loc) return '';
+  return loc.toLowerCase()
+    .replace(/ș|ş/g, 's').replace(/ț|ţ/g, 't')
+    .replace(/ă/g, 'a').replace(/â|î/g, 'i')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+};
 
 const SearchPage = ({ initialFilters = {} }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [query, setQuery] = useState(initialFilters.q || searchParams.get('q') || '');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -296,17 +313,22 @@ const SearchPage = ({ initialFilters = {} }) => {
                 </div>
               ) : (
                 results.map((company, index) => (
-                  <button
+                  <div
                     key={index}
-                    onClick={() => navigate(`/firma/${company.slug}`)}
-                    className="w-full bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all text-left group"
+                    className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all group"
                     data-testid={`result-${index}`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       {/* Left: Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <h3 className="text-base font-bold truncate group-hover:text-primary transition-colors">{company.denumire}</h3>
+                          <Link
+                            to={`/firma/${company.slug}`}
+                            className="text-base font-bold truncate hover:text-primary transition-colors"
+                            data-testid={`result-link-${index}`}
+                          >
+                            {company.denumire}
+                          </Link>
                           <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
                             company.anaf_stare?.includes('INREGISTRAT') 
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
@@ -324,14 +346,56 @@ const SearchPage = ({ initialFilters = {} }) => {
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          <span>{[company.localitate, company.judet].filter(Boolean).join(', ')}</span>
+                        {/* Location: clickable links */}
+                        <div className="flex items-center gap-1 text-xs mb-1.5">
+                          <MapPin className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          {company.localitate && company.judet && (
+                            <Link
+                              to={`/judet/${judetSlug(company.judet)}/${localitateSlug(company.localitate)}`}
+                              className="text-primary hover:underline"
+                              onClick={e => e.stopPropagation()}
+                              data-testid={`result-loc-${index}`}
+                            >
+                              {company.localitate}
+                            </Link>
+                          )}
+                          {company.localitate && company.judet && <span className="text-muted-foreground">,</span>}
+                          {company.judet && (
+                            <Link
+                              to={`/judet/${judetSlug(company.judet)}`}
+                              className="text-primary hover:underline"
+                              onClick={e => e.stopPropagation()}
+                              data-testid={`result-jud-${index}`}
+                            >
+                              {company.judet}
+                            </Link>
+                          )}
                         </div>
-                        
-                        {company.anaf_stare && (
-                          <p className="text-[11px] text-muted-foreground/70 mt-1">{company.anaf_stare}</p>
-                        )}
+
+                        {/* Contact icons */}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          {company.anaf_telefon && (
+                            <a
+                              href={`tel:${company.anaf_telefon}`}
+                              onClick={e => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-md px-1.5 py-0.5 hover:bg-green-100 transition-colors"
+                              title={`Telefon: ${company.anaf_telefon}`}
+                              data-testid={`result-phone-${index}`}
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{company.anaf_telefon}</span>
+                            </a>
+                          )}
+                          {company.anaf_fax && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5"
+                              title={`Fax: ${company.anaf_fax}`}
+                            >
+                              <Printer className="w-3 h-3" />
+                              <span>Fax</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Right: Financial badges + arrow */}
@@ -358,16 +422,18 @@ const SearchPage = ({ initialFilters = {} }) => {
                               </span>
                             </div>
                           )}
-                          {company.mf_an_bilant && (
+                          {company.mf_an_bilant && !String(company.mf_an_bilant).startsWith('WEB_') && (
                             <span className="text-[10px] text-muted-foreground">
                               Bilanț {company.mf_an_bilant}
                             </span>
                           )}
                         </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <Link to={`/firma/${company.slug}`}>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </Link>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))
               )}
             </div>
