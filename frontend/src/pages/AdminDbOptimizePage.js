@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Database, HardDrive, CheckCircle, XCircle, AlertTriangle,
-  RefreshCw, Loader2, Zap, Shield, ChevronDown, ChevronUp
+  RefreshCw, Loader2, Zap, Shield, ChevronDown, ChevronUp, Type
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminLayout from '../components/AdminLayout';
@@ -13,6 +13,10 @@ const AdminDbOptimizePage = () => {
   const [creating, setCreating] = useState({});
   const [creatingAll, setCreatingAll] = useState(false);
   const [expandedCol, setExpandedCol] = useState(null);
+  const [normalizePreview, setNormalizePreview] = useState(null);
+  const [normalizeLoading, setNormalizeLoading] = useState(false);
+  const [normalizeRunning, setNormalizeRunning] = useState(false);
+  const [normalizeResult, setNormalizeResult] = useState(null);
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
   const loadStats = useCallback(async () => {
@@ -71,6 +75,45 @@ const AdminDbOptimizePage = () => {
       console.error('Failed:', err);
     } finally {
       setCreatingAll(false);
+    }
+  };
+
+  const loadNormalizePreview = async () => {
+    setNormalizeLoading(true);
+    setNormalizeResult(null);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/db/normalize-preview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNormalizePreview(data);
+      }
+    } catch (err) {
+      console.error('Failed:', err);
+    } finally {
+      setNormalizeLoading(false);
+    }
+  };
+
+  const runNormalize = async () => {
+    if (!window.confirm(`Normalizezi diacriticele vechi (ş→ș, ţ→ț) pe ${normalizePreview?.total_affected_docs?.toLocaleString('ro-RO')} documente? Operatia este ireversibila.`)) return;
+    setNormalizeRunning(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/db/normalize-diacritics`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNormalizeResult(data);
+        setNormalizePreview(null);
+        loadStats();
+      }
+    } catch (err) {
+      console.error('Failed:', err);
+    } finally {
+      setNormalizeRunning(false);
     }
   };
 
@@ -208,6 +251,78 @@ const AdminDbOptimizePage = () => {
             </div>
           </div>
         )}
+
+        {/* Diacritics Normalization */}
+        <div className="bg-card border border-border rounded-xl p-6" data-testid="normalize-section">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Type className="w-5 h-5 text-blue-500" />
+                Normalizare Diacritice
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Converteste diacriticele vechi romanesti (ş→ș, ţ→ț) la formatul standard. Rezolva duplicatele de judete/localitati.
+              </p>
+            </div>
+            <button
+              onClick={loadNormalizePreview}
+              disabled={normalizeLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 shrink-0"
+              data-testid="normalize-preview-btn"
+            >
+              {normalizeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Scaneaza
+            </button>
+          </div>
+
+          {normalizePreview && normalizePreview.total_changes > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <span className="text-sm font-medium text-blue-800">
+                  {normalizePreview.total_changes} valori de corectat in {normalizePreview.total_affected_docs.toLocaleString('ro-RO')} documente
+                </span>
+                <button
+                  onClick={runNormalize}
+                  disabled={normalizeRunning}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  data-testid="normalize-run-btn"
+                >
+                  {normalizeRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                  Normalizeaza Acum
+                </button>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {normalizePreview.changes.map((c, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2 bg-secondary/50 rounded text-xs">
+                    <span className="px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground">{c.field}</span>
+                    <span className="text-red-600 line-through font-mono">{c.old_value}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="text-green-600 font-mono font-medium">{c.new_value}</span>
+                    <span className="ml-auto text-muted-foreground">{c.affected_docs.toLocaleString('ro-RO')} docs</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {normalizePreview && normalizePreview.total_changes === 0 && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-700">Toate diacriticele sunt deja normalizate. Nimic de corectat.</span>
+            </div>
+          )}
+
+          {normalizeResult && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="font-medium text-green-800">
+                  Normalizare completa: {normalizeResult.total_modified.toLocaleString('ro-RO')} documente actualizate
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Collection Details */}
         <div className="bg-card border border-border rounded-xl p-6" data-testid="collection-details">

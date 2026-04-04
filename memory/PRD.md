@@ -123,6 +123,9 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - SIDEBAR: 'Sincronizare DB' transformat in dropdown 'Baza de Date' cu sub-items: Sincronizare + Optimizare DB
 - Toate 12 indexurile au fost create cu succes dupa testare, scor sanatate 100%
 - Raspuns la intrebarea user: Top Firme se sincronizeaza automat dupa fiecare import (sortarea e dinamica)
+- Normalizare diacritice: buton in Optimizare DB care converteste ş→ș, ţ→ț in campurile judet/localitate (7640 valori, 1M+ docs)
+- Cache agregari grele (judete/CAEN): 24s→0.14s, pre-warm la startup, invalidare la sync
+- Docker production optimizat: MongoDB 40GB WiredTiger + zstd, ES 8GB heap, 8 uvicorn workers, Nginx auto+epoll+4096 conn
 
 ## Database Schema
 

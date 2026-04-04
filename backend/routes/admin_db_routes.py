@@ -261,3 +261,134 @@ async def drop_index(body: dict, current_user=Depends(get_current_user)):
         return {"status": "dropped", "collection": collection, "index": index_name}
     except Exception as e:
         return {"error": str(e)}
+
+
+# Diacritics normalization map (old Romanian ş/ţ -> new ș/ț)
+DIACRITICS_MAP = {
+    'ş': 'ș', 'Ş': 'Ș',
+    'ţ': 'ț', 'Ţ': 'Ț',
+    'ã': 'ă', 'Ã': 'Ă',
+}
+
+
+def _normalize_diacritics(text):
+    if not text or not isinstance(text, str):
+        return text
+    for old, new in DIACRITICS_MAP.items():
+        text = text.replace(old, new)
+    return text
+
+
+@router.get("/normalize-preview")
+async def normalize_preview(current_user=Depends(get_current_user)):
+    """Preview what normalization would change (dry-run) - optimized"""
+    if current_user.get("role") != "admin":
+        return {"error": "Admin only"}
+
+    db = get_local_db()
+    old_chars_pattern = "[şŞţŢãÃ]"
+    fields_to_check = ["judet", "localitate"]
+    preview = []
+
+    for field in fields_to_check:
+        # Only query docs that actually have old diacritics
+        query = {field: {"$regex": old_chars_pattern}}
+        pipeline = [
+            {"$match": query},
+            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}}
+        ]
+        async for doc in db.firme.aggregate(pipeline):
+            raw = doc["_id"]
+            if not isinstance(raw, str):
+                continue
+            normalized = _normalize_diacritics(raw)
+            if raw != normalized:
+                preview.append({
+                    "field": field,
+                    "old_value": raw,
+                    "new_value": normalized,
+                    "affected_docs": doc["count"]
+                })
+
+    total_affected = sum(p["affected_docs"] for p in preview)
+
+    return {
+        "changes": preview,
+        "total_changes": len(preview),
+        "total_affected_docs": total_affected,
+    }
+
+
+@router.post("/normalize-diacritics")
+async def normalize_diacritics_in_db(current_user=Depends(get_current_user)):
+    """Normalize old Romanian diacritics (ş->ș, ţ->ț) in firme collection"""
+    if current_user.get("role") != "admin":
+        return {"error": "Admin only"}
+
+    db = get_local_db()
+    old_chars_pattern = "[şŞţŢãÃ]"
+    fields = ["judet", "localitate"]
+    results = []
+    total_modified = 0
+
+    for field in fields:
+        query = {field: {"$regex": old_chars_pattern}}
+        pipeline = [
+            {"$match": query},
+            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}}
+        ]
+
+        updates = []
+        async for doc in db.firme.aggregate(pipeline):
+            raw = doc["_id"]
+            if not isinstance(raw, str):
+                continue
+            normalized = _normalize_diacritics(raw)
+            if raw != normalized:
+                updates.append({"old": raw, "new": normalized, "count": doc["count"]})
+
+        field_modified = 0
+        for upd in updates:
+            try:
+                result = await db.firme.update_many(
+                    {field: upd["old"]},
+                    {"$set": {field: upd["new"]}}
+                )
+                field_modified += result.modified_count
+                results.append({
+                    "field": field,
+                    "old": upd["old"],
+                    "new": upd["new"],
+                    "modified": result.modified_count,
+                    "status": "ok"
+                })
+                logger.info(f"Normalized {field}: '{upd['old']}' -> '{upd['new']}' ({result.modified_count} docs)")
+            except Exception as e:
+                results.append({
+                    "field": field,
+                    "old": upd["old"],
+                    "new": upd["new"],
+                    "modified": 0,
+                    "status": "error",
+                    "error": str(e)
+                })
+        total_modified += field_modified
+
+    # Invalidate caches after normalization
+    try:
+        from routes.location_routes import _judet_cache
+        _judet_cache["data"] = None
+        _judet_cache["timestamp"] = 0
+    except Exception:
+        pass
+    try:
+        from routes.caen_routes import _caen_counts_cache
+        _caen_counts_cache["data"] = None
+        _caen_counts_cache["timestamp"] = 0
+    except Exception:
+        pass
+
+    return {
+        "total_modified": total_modified,
+        "details": results,
+    }
