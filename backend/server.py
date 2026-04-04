@@ -195,7 +195,12 @@ async def search_companies(
     if q:
         # Search by name or CUI
         if q.isdigit():
-            query["cui"] = {"$regex": f"^{re.escape(q)}", "$options": "i"}
+            # CUI might be stored as string or int - search both
+            query["$or"] = [
+                {"cui": q},
+                {"cui": int(q)},
+                {"cui": {"$regex": f"^{re.escape(q)}"}}
+            ]
         else:
             query["denumire"] = {"$regex": re.escape(q), "$options": "i"}
     
