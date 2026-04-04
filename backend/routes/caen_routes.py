@@ -3,8 +3,33 @@ CAEN Routes - Browse companies by CAEN activity code
 """
 from fastapi import APIRouter, Query
 from database import get_local_db
+import time
 
 router = APIRouter(prefix="/api/caen", tags=["caen"])
+
+# Cache for CAEN company counts (expensive aggregation)
+_caen_counts_cache = {"data": None, "timestamp": 0}
+_CACHE_TTL = 3600  # 1 hour
+
+
+async def _get_caen_counts(db):
+    """Get company counts per CAEN code (cached 1h)"""
+    now = time.time()
+    if _caen_counts_cache["data"] and (now - _caen_counts_cache["timestamp"]) < _CACHE_TTL:
+        return _caen_counts_cache["data"]
+
+    pipeline = [
+        {"$match": {"anaf_cod_caen": {"$exists": True, "$ne": None, "$ne": ""}}},
+        {"$group": {"_id": "$anaf_cod_caen", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    result = {}
+    async for doc in db.firme.aggregate(pipeline):
+        result[str(doc["_id"])] = doc["count"]
+
+    _caen_counts_cache["data"] = result
+    _caen_counts_cache["timestamp"] = now
+    return result
 
 
 @router.get("/codes")
@@ -35,24 +60,18 @@ async def list_caen_codes(
             "company_count": 0
         }
 
-    # Get company counts per CAEN
-    pipeline = [
-        {"$match": {"anaf_cod_caen": {"$exists": True, "$ne": None, "$ne": ""}}},
-        {"$group": {"_id": "$anaf_cod_caen", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-
-    async for doc in db.firme.aggregate(pipeline):
-        cod = str(doc["_id"])
+    # Get cached company counts per CAEN
+    counts = await _get_caen_counts(db)
+    for cod, count in counts.items():
         if cod in caen_codes:
-            caen_codes[cod]["company_count"] = doc["count"]
+            caen_codes[cod]["company_count"] = count
         elif not sectiune and not q:
             caen_codes[cod] = {
                 "cod": cod,
                 "denumire": "",
                 "sectiune": "",
                 "sectiune_denumire": "",
-                "company_count": doc["count"]
+                "company_count": count
             }
 
     codes = sorted(caen_codes.values(), key=lambda x: -x["company_count"])

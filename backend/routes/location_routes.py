@@ -51,9 +51,18 @@ def clean_localitate(loc):
 # Pre-built mapping for judet normalization
 JUDET_NORMALIZE = {}
 
+# Cache for judet groups (expensive aggregation)
+_judet_cache = {"data": None, "timestamp": 0}
+_CACHE_TTL = 3600  # 1 hour
+
 
 async def get_judet_groups(db):
-    """Get judete grouped with normalized names"""
+    """Get judete grouped with normalized names (cached 1h)"""
+    import time
+    now = time.time()
+    if _judet_cache["data"] and (now - _judet_cache["timestamp"]) < _CACHE_TTL:
+        return _judet_cache["data"]
+
     pipeline = [
         {"$match": {"judet": {"$exists": True, "$ne": None, "$ne": ""}}},
         {"$group": {"_id": "$judet", "count": {"$sum": 1}}},
@@ -71,6 +80,8 @@ async def get_judet_groups(db):
         groups[slug]["count"] += doc["count"]
         groups[slug]["raw_names"].append(raw)
 
+    _judet_cache["data"] = groups
+    _judet_cache["timestamp"] = now
     return groups
 
 

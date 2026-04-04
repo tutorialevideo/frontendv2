@@ -252,6 +252,20 @@ async def run_full_sync(cloud_db, local_db, collections: list):
     sync_state["current_collection"] = None
     sync_state["last_sync"] = datetime.now(timezone.utc).isoformat()
     
+    # Invalidate caches after sync
+    try:
+        from routes.location_routes import _judet_cache
+        _judet_cache["data"] = None
+        _judet_cache["timestamp"] = 0
+    except Exception:
+        pass
+    try:
+        from routes.caen_routes import _caen_counts_cache
+        _caen_counts_cache["data"] = None
+        _caen_counts_cache["timestamp"] = 0
+    except Exception:
+        pass
+    
     add_sync_log("Sincronizare completă!", "success")
     
     return results
