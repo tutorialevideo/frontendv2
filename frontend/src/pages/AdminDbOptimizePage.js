@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Database, HardDrive, CheckCircle, XCircle, AlertTriangle,
-  RefreshCw, Loader2, Zap, Shield, ChevronDown, ChevronUp, Type
+  RefreshCw, Loader2, Zap, Shield, ChevronDown, ChevronUp, Type, HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminLayout from '../components/AdminLayout';
@@ -17,6 +17,11 @@ const AdminDbOptimizePage = () => {
   const [normalizeLoading, setNormalizeLoading] = useState(false);
   const [normalizeRunning, setNormalizeRunning] = useState(false);
   const [normalizeResult, setNormalizeResult] = useState(null);
+  const [qmarkPreview, setQmarkPreview] = useState(null);
+  const [qmarkLoading, setQmarkLoading] = useState(false);
+  const [qmarkRunning, setQmarkRunning] = useState(false);
+  const [qmarkResult, setQmarkResult] = useState(null);
+  const [qmarkFilter, setQmarkFilter] = useState('all');
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
   const loadStats = useCallback(async () => {
@@ -116,6 +121,49 @@ const AdminDbOptimizePage = () => {
       setNormalizeRunning(false);
     }
   };
+
+  const loadQmarkPreview = async () => {
+    setQmarkLoading(true);
+    setQmarkResult(null);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/db/qmark-preview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQmarkPreview(data);
+      }
+    } catch (err) {
+      console.error('Failed:', err);
+    } finally {
+      setQmarkLoading(false);
+    }
+  };
+
+  const runQmarkNormalize = async () => {
+    if (!window.confirm(`Corectezi ${qmarkPreview?.total} denumiri de firme (? → Ș/Ț)? Operatia este ireversibila.`)) return;
+    setQmarkRunning(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/db/qmark-normalize`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQmarkResult(data);
+        setQmarkPreview(null);
+      }
+    } catch (err) {
+      console.error('Failed:', err);
+    } finally {
+      setQmarkRunning(false);
+    }
+  };
+
+  const filteredQmarkItems = qmarkPreview?.items?.filter(item =>
+    qmarkFilter === 'all' || item.confidence === qmarkFilter
+  ) || [];
 
   if (loading) {
     return (
@@ -318,6 +366,138 @@ const AdminDbOptimizePage = () => {
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <span className="font-medium text-green-800">
                   Normalizare completa: {normalizeResult.total_modified.toLocaleString('ro-RO')} documente actualizate
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Question-Mark Corruption Fix */}
+        <div className="bg-card border border-border rounded-xl p-6" data-testid="qmark-section">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-orange-500" />
+                Corectare Caractere Corupte (?)
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Inlocuieste semnele de intrebare corupte cu diacriticele corecte (? → Ș/Ț) in denumirile firmelor.
+              </p>
+            </div>
+            <button
+              onClick={loadQmarkPreview}
+              disabled={qmarkLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 shrink-0"
+              data-testid="qmark-preview-btn"
+            >
+              {qmarkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Scaneaza
+            </button>
+          </div>
+
+          {qmarkPreview && qmarkPreview.total > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-medium text-orange-800">{qmarkPreview.total} firme de corectat</span>
+                  <span className="flex items-center gap-1 text-green-700">
+                    <span className="w-2 h-2 rounded-full bg-green-500" /> {qmarkPreview.high_confidence} sigure
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" /> {qmarkPreview.medium_confidence} probabile
+                  </span>
+                  {qmarkPreview.low_confidence > 0 && (
+                    <span className="flex items-center gap-1 text-red-700">
+                      <span className="w-2 h-2 rounded-full bg-red-500" /> {qmarkPreview.low_confidence} incerte
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={runQmarkNormalize}
+                  disabled={qmarkRunning}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                  data-testid="qmark-run-btn"
+                >
+                  {qmarkRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                  Corecteaza Toate
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-2">
+                {[
+                  { key: 'all', label: 'Toate' },
+                  { key: 'high', label: 'Sigure', color: 'bg-green-100 text-green-700 border-green-200' },
+                  { key: 'medium', label: 'Probabile', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                  { key: 'low', label: 'Incerte', color: 'bg-red-100 text-red-700 border-red-200' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setQmarkFilter(f.key)}
+                    className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                      qmarkFilter === f.key
+                        ? (f.color || 'bg-primary text-primary-foreground border-primary')
+                        : 'bg-secondary text-muted-foreground border-border hover:bg-secondary/80'
+                    }`}
+                    data-testid={`qmark-filter-${f.key}`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Preview table */}
+              <div className="max-h-96 overflow-y-auto border border-border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">CUI</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Denumire veche</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Denumire noua</th>
+                      <th className="text-center px-3 py-2 font-medium text-muted-foreground">Incredere</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredQmarkItems.map((item, i) => (
+                      <tr key={i} className="hover:bg-muted/20">
+                        <td className="px-3 py-2 font-mono text-muted-foreground">{item.cui}</td>
+                        <td className="px-3 py-2 font-mono text-red-600">
+                          {item.old_denumire.length > 55 ? item.old_denumire.slice(0, 55) + '...' : item.old_denumire}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-green-700 font-medium">
+                          {item.new_denumire.length > 55 ? item.new_denumire.slice(0, 55) + '...' : item.new_denumire}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            item.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                            item.confidence === 'medium' ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {item.confidence === 'high' ? 'SIGUR' : item.confidence === 'medium' ? 'PROBABIL' : 'INCERT'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {qmarkPreview && qmarkPreview.total === 0 && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-700">Niciun caracter corupt gasit. Denumirile sunt corecte.</span>
+            </div>
+          )}
+
+          {qmarkResult && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="font-medium text-green-800">
+                  Corectare completa: {qmarkResult.updated} denumiri actualizate
+                  {qmarkResult.errors > 0 && `, ${qmarkResult.errors} erori`}
                 </span>
               </div>
             </div>

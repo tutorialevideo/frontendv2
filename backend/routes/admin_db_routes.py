@@ -392,3 +392,196 @@ async def normalize_diacritics_in_db(current_user=Depends(get_current_user)):
         "total_modified": total_modified,
         "details": results,
     }
+
+
+# ── Question-mark to Ș/Ț normalization ────────────────────────────────────
+
+def _is_real_qmark(name, pos):
+    """Return True when the ? at *pos* is a genuine punctuation mark."""
+    n = len(name)
+    after = name[pos + 1] if pos + 1 < n else ""
+    before = name[pos - 1] if pos > 0 else ""
+    # ? at end of word / string → real
+    if not after or after in " \t\n\"')-":
+        return True
+    # preceded by . (e.g. ...?)
+    if before == ".":
+        return True
+    # not followed by a letter or period → real
+    if not after.isalpha() and after != ".":
+        return True
+    return False
+
+
+def _guess_qmark(name, pos):
+    """Return (replacement_char, confidence) for the ? at *pos*."""
+    if _is_real_qmark(name, pos):
+        return "?", "skip"
+
+    n = len(name)
+    before = name[pos - 1].upper() if pos > 0 else ""
+    after = name[pos + 1].upper() if pos + 1 < n else ""
+    after2 = name[pos + 2].upper() if pos + 2 < n else ""
+    is_ws = pos == 0 or (pos > 0 and name[pos - 1] in " -(")
+    V = set("AEIOUĂÎÂ")
+
+    # ── Before T / C / K → always Ș (ȘT, ȘC valid; ȚT, ȚC are not) ──
+    if after in "TCK":
+        return "Ș", "high"
+
+    # ── Word-start heuristics ──
+    if is_ws:
+        if after == "Ă":
+            return "Ț", "high"       # ȚĂRAN
+        if after in "ÎÂ":
+            return "Ț", "high"       # ȚÎFUI
+        if after == "E":
+            return "Ș", "high"       # ȘERBAN
+        if after == "A":
+            return "Ș", "high"       # ȘANDRU
+        if after == "I" and after2 in "GNP":
+            return "Ț", "high"       # ȚIGAN
+        if after == "I":
+            return "Ț", "medium"     # ȚI — most common
+        if after == "O":
+            return "Ț", "medium"     # ȚOICA
+        if after == "U":
+            return "Ș", "low"        # ambiguous ȘU/ȚU
+        if after == ".":
+            return "Ș", "medium"     # initial Ș.
+        return "Ș", "low"
+
+    # ── Mid-word: Vowel + ? + Vowel → Ț (except O?U → Ș) ──
+    if before in V and after in V:
+        if before == "O" and after == "U":
+            return "Ș", "high"       # ROȘU
+        return "Ț", "high"           # GHEORGHIȚA, DORUȚA
+
+    # ── Vowel + ? + consonant → Ț ──
+    if before in V and after and after not in V:
+        return "Ț", "medium"
+
+    # ── Consonant + ? + vowel → context-dependent ──
+    if before and before not in V and after in V:
+        if before == "P":
+            return "Ș", "medium"     # LUPȘA
+        if before == "C":
+            return "Ș", "medium"     # BUCȘA
+        return "Ț", "low"
+
+    return "Ț", "low"
+
+
+def _fix_qmarks_in_name(name):
+    """Replace corrupted ? with Ș/Ț. Returns (fixed_name, changes)."""
+    if "?" not in name:
+        return name, []
+    result = list(name)
+    changes = []
+    for i, ch in enumerate(result):
+        if ch != "?":
+            continue
+        repl, conf = _guess_qmark(name, i)
+        if conf == "skip":
+            continue
+        result[i] = repl
+        ctx_start = max(0, i - 4)
+        ctx_end = min(len(name), i + 5)
+        changes.append({
+            "pos": i,
+            "replacement": repl,
+            "confidence": conf,
+            "context": name[ctx_start:i] + "[" + repl + "]" + name[i + 1:ctx_end],
+        })
+    return "".join(result), changes
+
+
+@router.get("/qmark-preview")
+async def qmark_preview(current_user=Depends(get_current_user)):
+    """Preview ? → Ș/Ț replacement proposals for company names"""
+    if current_user.get("role") != "admin":
+        return {"error": "Admin only"}
+
+    db = get_local_db()
+    cursor = db.firme.find(
+        {"denumire": {"$regex": "\\?"}},
+        {"cui": 1, "denumire": 1, "_id": 0},
+    )
+    firms = await cursor.to_list(2000)
+
+    items = []
+    for f in firms:
+        old = f.get("denumire", "")
+        new, changes = _fix_qmarks_in_name(old)
+        if old == new:
+            continue
+        worst = min(changes, key=lambda c: {"high": 2, "medium": 1, "low": 0}.get(c["confidence"], -1))
+        items.append({
+            "cui": f["cui"],
+            "old_denumire": old,
+            "new_denumire": new,
+            "changes": changes,
+            "confidence": worst["confidence"],
+        })
+
+    return {
+        "total": len(items),
+        "high_confidence": sum(1 for r in items if r["confidence"] == "high"),
+        "medium_confidence": sum(1 for r in items if r["confidence"] == "medium"),
+        "low_confidence": sum(1 for r in items if r["confidence"] == "low"),
+        "items": items,
+    }
+
+
+@router.post("/qmark-normalize")
+async def qmark_normalize(body: dict = None, current_user=Depends(get_current_user)):
+    """Apply ? → Ș/Ț corrections. Accepts optional {overrides: {cui: new_name}}."""
+    if current_user.get("role") != "admin":
+        return {"error": "Admin only"}
+
+    body = body or {}
+    overrides = body.get("overrides", {})
+
+    db = get_local_db()
+    firms = await db.firme.find(
+        {"denumire": {"$regex": "\\?"}},
+        {"cui": 1, "denumire": 1, "_id": 0},
+    ).to_list(2000)
+
+    updated = 0
+    errors = 0
+    details = []
+
+    for f in firms:
+        cui = f["cui"]
+        cui_key = str(cui)
+        old_name = f["denumire"]
+
+        if cui_key in overrides:
+            new_name = overrides[cui_key]
+        else:
+            new_name, _ = _fix_qmarks_in_name(old_name)
+
+        if new_name == old_name:
+            continue
+
+        try:
+            result = await db.firme.update_one(
+                {"$or": [{"cui": cui_key}, {"cui": cui}]},
+                {"$set": {"denumire": new_name}},
+            )
+            if result.modified_count > 0:
+                updated += 1
+                details.append({"cui": cui, "old": old_name, "new": new_name, "status": "ok"})
+            else:
+                details.append({"cui": cui, "old": old_name, "new": new_name, "status": "not_found"})
+        except Exception as e:
+            errors += 1
+            details.append({"cui": cui, "old": old_name, "new": new_name, "status": "error", "error": str(e)})
+
+    return {
+        "total_processed": len(firms),
+        "updated": updated,
+        "errors": errors,
+        "details": details[:50],
+    }
