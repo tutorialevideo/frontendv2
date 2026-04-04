@@ -1,100 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Users, BarChart3 } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Building2, Wallet, Landmark, CreditCard, PiggyBank, Banknote, Loader2 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
+} from 'recharts';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+
+const formatCurrency = (value) => {
+  if (value === null || value === undefined) return '-';
+  const abs = Math.abs(value);
+  if (abs >= 1000000) return `${(value / 1000000).toFixed(1)}M RON`;
+  if (abs >= 1000) return `${(value / 1000).toFixed(0)}K RON`;
+  return `${value.toFixed(0)} RON`;
+};
+
+const formatFullCurrency = (value) => {
+  if (value === null || value === undefined) return '-';
+  return `${Math.round(value).toLocaleString('ro-RO')} RON`;
+};
+
+const BilanCard = ({ label, value, icon: Icon, color, trend }) => {
+  const isNegative = value !== null && value !== undefined && value < 0;
+  
+  return (
+    <div className={`border rounded-xl p-4 ${color}`} data-testid={`bilan-card-${label.toLowerCase().replace(/\s/g, '-')}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium opacity-80">{label}</span>
+        <Icon className="w-4 h-4 opacity-60" />
+      </div>
+      <div className={`text-xl font-bold ${isNegative ? 'text-red-600' : ''}`}>
+        {formatCurrency(value)}
+      </div>
+      {trend !== null && trend !== undefined && (
+        <div className={`flex items-center gap-1 text-xs mt-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          <span>{trend >= 0 ? '+' : ''}{trend.toFixed(1)}% vs anul anterior</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const FinancialChart = ({ cui }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dataSource, setDataSource] = useState('approximated');
 
   useEffect(() => {
-    loadFinancialData();
-  }, [cui]);
-
-  const loadFinancialData = async () => {
-    try {
-      const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-      const res = await fetch(`${API_URL}/api/company/${cui}/financials`);
-      
-      if (res.ok) {
-        const result = await res.json();
-        setData(result.data || []);
-        setDataSource(result.source || 'approximated');
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/company/${cui}/financials`);
+        const text = await response.text();
+        let result = null;
+        try { result = JSON.parse(text); } catch(e) {}
+        if (result && result.data && result.data.length > 0) {
+          setData(result.data);
+        }
+      } catch (err) {
+        console.error('Error fetching financials:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load financial data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)} mil`;
-    }
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(0)} k`;
-    }
-    return new Intl.NumberFormat('ro-RO').format(value);
-  };
-
-  const formatFullCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('ro-RO').format(value) + ' RON';
-  };
-
-  const formatTooltipValue = (value, name) => {
-    if (value === null || value === undefined) return ['-', name];
-    const label = name === 'cifra_afaceri' ? 'Cifra de afaceri' : 'Profit net';
-    return [formatFullCurrency(value), label];
-  };
-
-  // Calculate KPIs from data
-  const getKPIs = () => {
-    if (!data || data.length === 0) return null;
-
-    const lastYear = data[data.length - 1];
-    const prevYear = data.length > 1 ? data[data.length - 2] : null;
-
-    // Calculate growth percentages
-    const cifraGrowth = prevYear && prevYear.cifra_afaceri 
-      ? ((lastYear.cifra_afaceri - prevYear.cifra_afaceri) / prevYear.cifra_afaceri * 100)
-      : null;
-
-    const profitGrowth = prevYear && prevYear.profit_net !== null && prevYear.profit_net !== 0
-      ? ((lastYear.profit_net - prevYear.profit_net) / Math.abs(prevYear.profit_net) * 100)
-      : null;
-
-    const angajatiGrowth = prevYear && prevYear.numar_angajati 
-      ? ((lastYear.numar_angajati - prevYear.numar_angajati) / prevYear.numar_angajati * 100)
-      : null;
-
-    return {
-      cifra_afaceri: lastYear.cifra_afaceri,
-      cifra_growth: cifraGrowth,
-      profit_net: lastYear.profit_net,
-      profit_growth: profitGrowth,
-      numar_angajati: lastYear.numar_angajati,
-      angajati_growth: angajatiGrowth,
-      year: lastYear.year
     };
-  };
-
-  const kpis = getKPIs();
+    if (cui) fetchData();
+  }, [cui]);
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-xl p-6">
-        <div className="animate-pulse">
-          <div className="h-6 bg-secondary rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="h-24 bg-secondary rounded"></div>
-            <div className="h-24 bg-secondary rounded"></div>
-            <div className="h-24 bg-secondary rounded"></div>
-          </div>
-          <div className="h-64 bg-secondary rounded"></div>
-        </div>
+      <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center h-32">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -103,161 +83,208 @@ const FinancialChart = ({ cui }) => {
     return null;
   }
 
+  // Get latest year data and calculate trends
+  const latest = data[data.length - 1];
+  const prev = data.length > 1 ? data[data.length - 2] : null;
+
+  const calcTrend = (field) => {
+    if (!prev || !prev[field] || !latest[field] || prev[field] === 0) return null;
+    return ((latest[field] - prev[field]) / Math.abs(prev[field])) * 100;
+  };
+
+  // Determine which fields are available
+  const hasBalanceSheet = latest.active_imobilizate !== null || latest.active_circulante !== null || latest.datorii !== null;
+  const hasIncomeStatement = latest.cifra_afaceri !== null || latest.profit_net !== null;
+
+  // Build chart data
+  const chartData = data.map(item => ({
+    year: item.year,
+    'Active imobilizate': item.active_imobilizate || 0,
+    'Active circulante': item.active_circulante || 0,
+    'Datorii': item.datorii || 0,
+    'Capitaluri proprii': item.capitaluri_proprii || 0,
+  }));
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload) return null;
+    return (
+      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+        <p className="font-medium mb-1">Anul {label}</p>
+        {payload.map((entry, i) => (
+          <p key={i} className="text-xs" style={{ color: entry.color }}>
+            {entry.name}: {formatFullCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-card border border-border rounded-xl p-6" data-testid="financial-chart">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-primary" />
-          Date financiare
+          Bilanț contabil
         </h3>
         <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
           {data[0]?.year} - {data[data.length - 1]?.year}
         </span>
       </div>
 
-      {/* KPI Cards - Similar to listafirme.ro */}
-      {kpis && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* Cifra de afaceri KPI */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4" data-testid="kpi-cifra-afaceri">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">Cifra de afaceri</span>
-              <DollarSign className="w-4 h-4 text-blue-500" />
-            </div>
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-              {formatFullCurrency(kpis.cifra_afaceri)}
-            </div>
-            {kpis.cifra_growth !== null && (
-              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.cifra_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {kpis.cifra_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                <span>{kpis.cifra_growth >= 0 ? '+' : ''}{kpis.cifra_growth.toFixed(1)}% vs anul anterior</span>
-              </div>
+      {/* KPI Cards - Latest Year */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+        {hasIncomeStatement && latest.cifra_afaceri != null && (
+          <BilanCard
+            label="Cifra de afaceri"
+            value={latest.cifra_afaceri}
+            icon={Banknote}
+            color="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+            trend={calcTrend('cifra_afaceri')}
+          />
+        )}
+        {hasIncomeStatement && latest.profit_net != null && (
+          <BilanCard
+            label="Profit net"
+            value={latest.profit_net}
+            icon={TrendingUp}
+            color={latest.profit_net >= 0
+              ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+              : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"}
+            trend={calcTrend('profit_net')}
+          />
+        )}
+        {hasBalanceSheet && (
+          <>
+            <BilanCard
+              label="Active imobilizate"
+              value={latest.active_imobilizate}
+              icon={Building2}
+              color="bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800"
+              trend={calcTrend('active_imobilizate')}
+            />
+            <BilanCard
+              label="Active circulante"
+              value={latest.active_circulante}
+              icon={Wallet}
+              color="bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800"
+              trend={calcTrend('active_circulante')}
+            />
+            <BilanCard
+              label="Datorii totale"
+              value={latest.datorii}
+              icon={CreditCard}
+              color="bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800"
+              trend={calcTrend('datorii')}
+            />
+            <BilanCard
+              label="Capitaluri proprii"
+              value={latest.capitaluri_proprii}
+              icon={Landmark}
+              color={latest.capitaluri_proprii >= 0
+                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
+                : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"}
+              trend={calcTrend('capitaluri_proprii')}
+            />
+            {latest.casa_conturi_banci != null && (
+              <BilanCard
+                label="Casa și conturi"
+                value={latest.casa_conturi_banci}
+                icon={PiggyBank}
+                color="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800"
+                trend={calcTrend('casa_conturi_banci')}
+              />
             )}
-          </div>
+            {latest.capital_subscris != null && (
+              <BilanCard
+                label="Capital subscris"
+                value={latest.capital_subscris}
+                icon={Banknote}
+                color="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800"
+                trend={null}
+              />
+            )}
+          </>
+        )}
+        {latest.numar_angajati != null && (
+          <BilanCard
+            label="Angajați"
+            value={latest.numar_angajati}
+            icon={Building2}
+            color="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+            trend={calcTrend('numar_angajati')}
+          />
+        )}
+      </div>
 
-          {/* Profit net KPI */}
-          <div className={`border rounded-lg p-4 ${
-            kpis.profit_net >= 0 
-              ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900' 
-              : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900'
-          }`} data-testid="kpi-profit-net">
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${kpis.profit_net >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                {kpis.profit_net >= 0 ? 'Profit net' : 'Pierdere neta'}
-              </span>
-              <TrendingUp className={`w-4 h-4 ${kpis.profit_net >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-            </div>
-            <div className={`text-2xl font-bold ${kpis.profit_net >= 0 ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
-              {formatFullCurrency(Math.abs(kpis.profit_net))}
-            </div>
-            {kpis.profit_growth !== null && (
-              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.profit_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {kpis.profit_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                <span>{kpis.profit_growth >= 0 ? '+' : ''}{kpis.profit_growth.toFixed(1)}% vs anul anterior</span>
-              </div>
-            )}
-          </div>
-
-          {/* Numar angajati KPI */}
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4" data-testid="kpi-angajati">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Numar angajati</span>
-              <Users className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">
-              {kpis.numar_angajati || '-'}
-            </div>
-            {kpis.angajati_growth !== null && (
-              <div className={`flex items-center gap-1 text-sm mt-1 ${kpis.angajati_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {kpis.angajati_growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                <span>{kpis.angajati_growth >= 0 ? '+' : ''}{kpis.angajati_growth.toFixed(1)}% vs anul anterior</span>
-              </div>
-            )}
-          </div>
+      {/* Bar Chart - Balance Sheet Comparison */}
+      {hasBalanceSheet && data.length > 1 && (
+        <div className="mb-6">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="year" stroke="#6b7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#6b7280" style={{ fontSize: '11px' }} tickFormatter={(v) => formatCurrency(v).replace(' RON', '')} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Bar dataKey="Active imobilizate" fill="#6366f1" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Active circulante" fill="#0ea5e9" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Datorii" fill="#f97316" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Capitaluri proprii" fill="#10b981" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
-      {/* Combined Line Chart - Cifra de afaceri + Profit net */}
-      <div className="mb-4">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-xs text-muted-foreground">Cifra de afaceri</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-xs text-muted-foreground">Profit net</span>
-          </div>
-        </div>
-      </div>
-
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="year" 
-            stroke="#6b7280"
-            style={{ fontSize: '12px' }}
-          />
-          <YAxis 
-            stroke="#6b7280"
-            style={{ fontSize: '12px' }}
-            tickFormatter={(value) => formatCurrency(value)}
-          />
-          <Tooltip 
-            formatter={formatTooltipValue}
-            labelFormatter={(label) => `Anul ${label}`}
-            contentStyle={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-          />
-          <Legend 
-            formatter={(value) => value === 'cifra_afaceri' ? 'Cifra de afaceri' : 'Profit net'}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="cifra_afaceri" 
-            stroke="#3b82f6"
-            strokeWidth={3}
-            dot={{ fill: '#3b82f6', r: 4 }}
-            activeDot={{ r: 6 }}
-            name="cifra_afaceri"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="profit_net" 
-            stroke="#10b981"
-            strokeWidth={3}
-            dot={{ fill: '#10b981', r: 4 }}
-            activeDot={{ r: 6 }}
-            name="profit_net"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-
-      {/* Year-by-Year Data Table */}
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-sm">
+      {/* Detailed Year-by-Year Table */}
+      <div className="overflow-x-auto border border-border rounded-lg">
+        <table className="w-full text-sm" data-testid="bilant-table">
           <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 px-3 font-medium text-muted-foreground">An</th>
-              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Cifra afaceri</th>
-              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Profit net</th>
-              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Angajati</th>
+            <tr className="bg-secondary/50">
+              <th className="text-left py-3 px-3 font-medium text-muted-foreground border-b border-border">An</th>
+              {hasIncomeStatement && latest.cifra_afaceri != null && (
+                <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Cifra afaceri</th>
+              )}
+              {hasIncomeStatement && latest.profit_net != null && (
+                <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Profit net</th>
+              )}
+              {hasBalanceSheet && (
+                <>
+                  <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Active imob.</th>
+                  <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Active circ.</th>
+                  <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Datorii</th>
+                  <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Capital propriu</th>
+                </>
+              )}
+              {latest.numar_angajati != null && (
+                <th className="text-right py-3 px-3 font-medium text-muted-foreground border-b border-border">Angajați</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {data.slice().reverse().map((item, index) => (
-              <tr key={item.year} className={`border-b border-border/50 ${index === 0 ? 'bg-primary/5' : ''}`}>
-                <td className="py-2 px-3 font-medium">{item.year}</td>
-                <td className="text-right py-2 px-3">{formatFullCurrency(item.cifra_afaceri)}</td>
-                <td className={`text-right py-2 px-3 ${item.profit_net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatFullCurrency(item.profit_net)}
-                </td>
-                <td className="text-right py-2 px-3">{item.numar_angajati || '-'}</td>
+              <tr key={item.year} className={`border-b border-border/50 hover:bg-secondary/30 transition-colors ${index === 0 ? 'bg-primary/5 font-medium' : ''}`}>
+                <td className="py-2.5 px-3 font-medium">{item.year}</td>
+                {hasIncomeStatement && latest.cifra_afaceri != null && (
+                  <td className="text-right py-2.5 px-3">{formatFullCurrency(item.cifra_afaceri)}</td>
+                )}
+                {hasIncomeStatement && latest.profit_net != null && (
+                  <td className={`text-right py-2.5 px-3 ${item.profit_net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatFullCurrency(item.profit_net)}
+                  </td>
+                )}
+                {hasBalanceSheet && (
+                  <>
+                    <td className="text-right py-2.5 px-3">{formatFullCurrency(item.active_imobilizate)}</td>
+                    <td className="text-right py-2.5 px-3">{formatFullCurrency(item.active_circulante)}</td>
+                    <td className="text-right py-2.5 px-3 text-orange-600">{formatFullCurrency(item.datorii)}</td>
+                    <td className={`text-right py-2.5 px-3 ${item.capitaluri_proprii >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {formatFullCurrency(item.capitaluri_proprii)}
+                    </td>
+                  </>
+                )}
+                {latest.numar_angajati != null && (
+                  <td className="text-right py-2.5 px-3">{item.numar_angajati || '-'}</td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -265,20 +292,11 @@ const FinancialChart = ({ cui }) => {
       </div>
 
       {/* Data Source Info */}
-      {dataSource === 'real' ? (
-        <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-          <p className="text-xs text-green-800 dark:text-green-200">
-            <strong>Date reale</strong> din bilanturile oficiale publicate la Ministerul Finantelor pentru toti anii afisati.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
-          <p className="text-xs text-amber-800 dark:text-amber-200">
-            <strong>Nota:</strong> Datele pentru {data[data.length - 1]?.year} sunt reale (sursa: Ministerul Finantelor). 
-            Valorile pentru anii anteriori sunt aproximate.
-          </p>
-        </div>
-      )}
+      <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
+        <p className="text-xs text-green-800 dark:text-green-200">
+          <strong>Date oficiale</strong> din bilanțurile publicate la Ministerul Finanțelor ({data[0]?.year} - {data[data.length - 1]?.year}).
+        </p>
+      </div>
     </div>
   );
 };

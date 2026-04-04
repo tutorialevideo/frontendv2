@@ -438,19 +438,20 @@ async def get_company_financials(cui: str):
         
         years.append(year_int)
         
-        # Extract financial data - use real values from bilanturi
-        # Use venituri_totale as fallback for cifra_afaceri if not available
-        cifra_afaceri = bilant.get('cifra_afaceri') or bilant.get('venituri_totale')
-        
         data.append({
             'year': year_int,
-            'cifra_afaceri': cifra_afaceri,
+            'active_imobilizate': bilant.get('active_imobilizate'),
+            'active_circulante': bilant.get('active_circulante'),
+            'creante': bilant.get('creante'),
+            'casa_conturi_banci': bilant.get('casa_conturi_banci'),
+            'datorii': bilant.get('datorii'),
+            'capitaluri_proprii': bilant.get('capitaluri_proprii'),
+            'capital_subscris': bilant.get('capital_subscris'),
+            'cifra_afaceri': bilant.get('cifra_afaceri') or bilant.get('venituri_totale'),
             'profit_net': bilant.get('profit_net'),
             'numar_angajati': bilant.get('numar_angajati'),
             'venituri_totale': bilant.get('venituri_totale'),
             'cheltuieli_totale': bilant.get('cheltuieli_totale'),
-            'capitaluri_proprii': bilant.get('capitaluri_proprii'),
-            'datorii': bilant.get('datorii'),
         })
     
     return {

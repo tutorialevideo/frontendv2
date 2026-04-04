@@ -183,6 +183,11 @@ async def create_indexes(local_db, collection_name: str):
             await local_db[collection_name].create_index('cui', unique=True)
             await local_db[collection_name].create_index('denumire')
             await local_db[collection_name].create_index('id')
+            await local_db[collection_name].create_index('judet')
+            await local_db[collection_name].create_index('localitate')
+            await local_db[collection_name].create_index('anaf_cod_caen')
+            await local_db[collection_name].create_index('has_dosare')
+            await local_db[collection_name].create_index([('judet', 1), ('localitate', 1)])
             await local_db[collection_name].create_index([('denumire', 'text')])
             logger.info(f"  Created indexes for {collection_name}")
             
@@ -455,6 +460,29 @@ async def set_cloud_url(request: CloudUrlRequest, admin_user = Depends(verify_ad
     except Exception as e:
         logger.error(f"Failed to connect to cloud MongoDB: {e}")
         raise HTTPException(status_code=400, detail=f"Nu s-a putut conecta: {str(e)}")
+
+
+@router.post("/create-indexes")
+async def create_all_indexes(admin_user = Depends(verify_admin)):
+    """Create indexes on all collections (without re-sync)"""
+    local_db = get_local_db()
+    if local_db is None:
+        raise HTTPException(status_code=400, detail="Local DB not connected")
+    
+    collections = ['firme', 'bilanturi', 'dosare', 'bpi_records', 'caen_codes']
+    results = {}
+    for col in collections:
+        try:
+            count = await local_db[col].estimated_document_count()
+            if count > 0:
+                await create_indexes(local_db, col)
+                results[col] = f"Indexes created ({count:,} docs)"
+            else:
+                results[col] = "Skipped (empty)"
+        except Exception as e:
+            results[col] = f"Error: {str(e)}"
+    
+    return {"status": "ok", "results": results}
 
 
 @router.get("/health")
