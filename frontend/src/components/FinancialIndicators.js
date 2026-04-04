@@ -23,6 +23,7 @@ const FinancialIndicators = ({ cui }) => {
   const [error, setError] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     profitability: true,
+    ebitda: true,
     liquidity: false,
     solvency: false,
     efficiency: false
@@ -119,7 +120,7 @@ const FinancialIndicators = ({ cui }) => {
     );
   }
 
-  const { raw_data, profitability, liquidity, solvency, efficiency, health_score } = indicators;
+  const { raw_data, profitability, ebitda: ebitdaData, liquidity, solvency, efficiency, health_score } = indicators;
 
   const IndicatorRow = ({ label, data, showRating = true }) => (
     <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
@@ -254,6 +255,29 @@ const FinancialIndicators = ({ cui }) => {
             </div>
           )}
         </div>
+
+        {/* EBITDA */}
+        {ebitdaData && (
+          <div className="border-b border-border">
+            <SectionHeader 
+              title="EBITDA" 
+              icon={BarChart3} 
+              section="ebitda"
+              color="bg-cyan-500"
+            />
+            {expandedSections.ebitda && (
+              <div className="p-4 space-y-1">
+                <IndicatorRow label="EBITDA estimat" data={ebitdaData.ebitda} />
+                <IndicatorRow label="Marja EBITDA" data={ebitdaData.marja_ebitda} />
+                <IndicatorRow label="EBITDA / Datorii" data={ebitdaData.ebitda_datorii} />
+                <IndicatorRow label="Amortizare estimata" data={ebitdaData.amortizare_estimata} showRating={false} />
+                <div className="pt-2 text-xs text-muted-foreground bg-secondary/30 p-3 rounded-lg mt-2">
+                  EBITDA este estimat pe baza datelor publice din bilant. Amortizarea este calculata din variatia activelor imobilizate intre ani.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Liquidity */}
         <div className="border-b border-border">

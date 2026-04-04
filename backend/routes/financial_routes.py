@@ -130,6 +130,44 @@ def calculate_financial_indicators(firma: Dict, bilanturi: List[Dict] = None) ->
     rata_cheltuieli = safe_divide(cheltuieli_totale, venituri_totale) * 100 if venituri_totale > 0 else None
     eficienta_activelor = safe_divide(cifra_afaceri, total_active) if total_active > 0 else None
     
+    # === EBITDA CALCULATION ===
+    # Estimate amortization from year-over-year change in fixed assets
+    amortizare_estimata = 0
+    ebitda = None
+    marja_ebitda = None
+    ebitda_datorii = None
+    
+    if bilanturi and len(bilanturi) >= 2:
+        sorted_bil = sorted(bilanturi, key=lambda x: x.get('an', '0'), reverse=True)
+        current_ai = (sorted_bil[0].get('active_imobilizate', 0) or 0)
+        prev_ai = (sorted_bil[1].get('active_imobilizate', 0) or 0)
+        # Amortizare estimata = scaderea valorii nete a activelor imobilizate
+        # Daca activele au scazut, diferenta ~ amortizare (fara investitii noi)
+        if prev_ai > 0:
+            amortizare_estimata = max(0, prev_ai - current_ai)
+            # Daca activele au crescut, estimam amortizare ca ~10% din active
+            if amortizare_estimata == 0:
+                amortizare_estimata = current_ai * 0.10
+    elif active_imobilizate > 0:
+        # Fallback: ~10% din active imobilizate (medie industrie)
+        amortizare_estimata = active_imobilizate * 0.10
+    
+    if profit_brut > 0 or profit_net != 0:
+        # EBITDA = Profit Brut + Amortizare (daca avem profit_brut)
+        # Altfel: EBITDA ≈ Profit Net + Impozit estimat (16%) + Amortizare
+        if profit_brut > 0:
+            ebitda = profit_brut + amortizare_estimata
+        else:
+            # Estimam impozitul ca 16% din profit (rata standard RO)
+            impozit_estimat = max(0, profit_net * 0.16 / 0.84) if profit_net > 0 else 0
+            ebitda = profit_net + impozit_estimat + amortizare_estimata
+        
+        if cifra_afaceri > 0 and ebitda is not None:
+            marja_ebitda = safe_divide(ebitda, cifra_afaceri) * 100
+        
+        if datorii > 0 and ebitda is not None:
+            ebitda_datorii = safe_divide(ebitda, datorii)
+    
     # === GROWTH INDICATORS (if we have historical data) ===
     growth_indicators = {}
     if bilanturi and len(bilanturi) >= 2:
@@ -179,6 +217,15 @@ def calculate_financial_indicators(firma: Dict, bilanturi: List[Dict] = None) ->
             health_score += 5
         elif rata_indatorarii > 80:
             health_score -= 15
+    
+    # EBITDA contribution (+/- 10 points)
+    if marja_ebitda is not None:
+        if marja_ebitda > 20:
+            health_score += 10
+        elif marja_ebitda > 10:
+            health_score += 5
+        elif marja_ebitda < 0:
+            health_score -= 10
     
     health_score = max(0, min(100, health_score))
     
@@ -253,6 +300,36 @@ def calculate_financial_indicators(firma: Dict, bilanturi: List[Dict] = None) ->
                 "description": "Profit brut / Total active × 100",
                 "rating": get_rating(rata_rentabilitate_economica, {'excellent': 20, 'good': 10, 'average': 5}),
                 "interpretation": "Capacitatea de a genera profit din active"
+            }
+        },
+        "ebitda": {
+            "ebitda": {
+                "value": ebitda,
+                "formatted": f"{ebitda:,.0f} RON" if ebitda is not None else "N/A",
+                "description": "Profit Brut + Amortizare estimată",
+                "rating": get_rating(ebitda, {'excellent': 500000, 'good': 100000, 'average': 10000}) if ebitda else "N/A",
+                "interpretation": "Capacitatea operațională de a genera cash-flow înainte de amortizare, dobânzi și impozite"
+            },
+            "marja_ebitda": {
+                "value": marja_ebitda,
+                "formatted": format_percent(marja_ebitda),
+                "description": "EBITDA / Cifra de afaceri × 100",
+                "rating": get_rating(marja_ebitda, {'excellent': 25, 'good': 15, 'average': 8}) if marja_ebitda else "N/A",
+                "interpretation": "Eficiența operațională a companiei. Ideal > 15%"
+            },
+            "ebitda_datorii": {
+                "value": ebitda_datorii,
+                "formatted": f"{ebitda_datorii:.2f}x" if ebitda_datorii is not None else "N/A",
+                "description": "EBITDA / Datorii totale",
+                "rating": get_rating(ebitda_datorii, {'excellent': 3, 'good': 1.5, 'average': 0.5}) if ebitda_datorii else "N/A",
+                "interpretation": "Capacitatea de a acoperi datoriile din cash-flow operațional. Ideal > 1.5x"
+            },
+            "amortizare_estimata": {
+                "value": amortizare_estimata,
+                "formatted": f"{amortizare_estimata:,.0f} RON" if amortizare_estimata else "N/A",
+                "description": "Estimată din variația activelor imobilizate",
+                "rating": "Info",
+                "interpretation": "Valoare estimată - nu provine direct din bilanț"
             }
         },
         "liquidity": {
