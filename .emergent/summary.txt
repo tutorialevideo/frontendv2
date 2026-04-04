@@ -1,56 +1,57 @@
-<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (RapoarteFirme), bazată pe date publice agregate (2.38 milioane de firme). Platforma necesită Site public, Zonă User și Zonă Admin. Arhitectură hibridă (MongoDB local pentru viteză, Cloud pentru master). Funcționalități cerute recent: Optimizare performanță frontend (PageSpeed), Top Firme pe județ/localitate/CAEN, unelte de mentenanță și optimizare a bazei de date în admin (indexare/normalizare diacritice), ajustare configurație Docker pentru server puternic (128GB RAM), extindere Sitemap XML la toate 2.38M companii și implementare completă SEO (Meta descriptions dinamice, canonical, keywords, robots).
+<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (RapoarteFirme), bazată pe date publice agregate (2.38 milioane de firme). Platforma necesită Site public, Zonă User și Zonă Admin. Arhitectură hibridă (MongoDB local pentru viteză, Cloud pentru master). Funcționalități cerute recent: curățare date corupte (diacritice afișate ca ), modularizare backend, generare AI pentru descrieri SEO pe bază de CAEN, rafinare carduri de căutare și import de coduri CAEN vechi (Rev. 1, 2, 3) care lipsesc din baza de date.
 
 **User's preferred language**: **Romanian** (INSTRUCT next agent to respond in the user's preferred language only)
 
 **what currently exists?**: 
-Aplicația este o platformă matură full-stack (React + FastAPI + MongoDB hibrid). În această sesiune, frontend-ul a primit optimizări masive de PageSpeed (, code splitting), reducând bundle-ul principal substanțial. A fost adăugată caracteristica Top Firme cu paginare și ranking pe paginile de Locații/CAEN. În backend s-a adăugat caching în memorie pentru agregările grele (reducând timpul de încărcare de la 24s la 0.15s) + pre-warm cache task. A fost creată pagina  cu opțiuni de generare indici și normalizare diacritice masive. Sitemap-ul XML a fost ajustat să includă toate 2.38 milioane de companii. Setările Docker au fost scalate masiv pentru hardware-ul utilizatorului. Bug-urile severe de căutare din MongoDB (cauzate de  salvat ca  pe Atlas vs  local) au fost adresate la nivel de query-uri pe rute. Toate paginile publice au primit tag-uri SEO extinse (Helmet, canonical, dinamic meta descriptions).
+Platformă full-stack extrem de performantă (React + FastAPI + MongoDB/Elasticsearch). În această sesiune s-au rezolvat masiv o serie de funcționalități și bug-uri: 
+1. Script inteligent în Admin pentru a detecta și normaliza diacriticele lipsă (ex:  -> ).
+2. S-a spart  masiv (de la 603 la ~107 linii), mutând rutele în fișiere dedicate.
+3. S-a creat un modul batch (cu paralelism) ce folosește Gemini Flash (Emergent LLM key) pentru a genera descrieri SEO pentru toate firmele, promptul fiind obligat să folosească codul CAEN pentru a evita confuziile de nume.
+4. UI-ul paginii de Search a fost făcut compact (o linie), Județul/Localitatea au devenit link-uri clickabile, iar contactele (telefon/fax) au primit iconițe specifice (fără hiperlink).
+5. S-a corectat logic flow-ul frontend de căutare: acum, dacă Elasticsearch returnează 0 rezultate la o căutare (ex. un CUI numeric neindexat corect în ES), frontend-ul va face fallback corect către MongoDB.
 
 **Last working item**:
-    - **Last item agent was working**: Fixarea bug-ului unde paginile firmelor (ex. PFA-uri) returnau not found pe Docker-ul de producție și nu apăreau în search. S-a descoperit că Atlas Cloud (producție) stochează  ca **integer**, iar codul căuta un  și încerca regex pe integer. Agentul a modificat query-urile în rute (, , , ) pentru a căuta atât ca string, cât și ca int (), și a oprit regex-ul simplu pe numere.
-    - **Status**: USER VERIFICATION PENDING (Utilizatorul trebuie să ruleze comanda de  pe serverul lui pentru a vedea fix-urile)
-    - **Agent Testing Done**: Y (Testat via bash și python pe setul de date existent)
+    - **Last item agent was working**: Extragerea și importul descrierilor pentru codurile CAEN Rev. 1, 2 și 3. Baza de date conține doar 615 coduri CAEN (Rev.2), dar firmele folosesc 1.275 coduri distincte (multe fiind Rev.1 vechi). Agentul a folosit  pe  pentru a colecta restul descrierilor și a pregăti importul acestora în MongoDB.
+    - **Status**: IN PROGRESS
+    - **Agent Testing Done**: N
     - **Which testing method agent to use?**: manual testing by curl / python -c
     - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-  Issue 1: Date corupte cu semne de întrebare  în loc de diacritice pe producție (P1)
-     - **Attempted fixes**: S-a implementat normalizarea pentru câmpul  și  (prin ). Nu a fost încă aplicată la  firmelor.
-     - **Next debug checklist**: În MongoDB Atlas, caracterele / la denumirile firmelor (ex. , ) apar ca . Trebuie discutat cu utilizatorul dacă dorește un script de curățare regex (cu grijă pentru false positives) sau o re-importare a datelor. Câmpurile implicate:  în db .
-     - **Why fix this issue and what will be achieved with the fix?**: Vizualizarea corectă a numelor în frontend și indexare corectă SEO/căutări, evitând PFA-uri cu caractere ciudate.
-     - **Status**: NOT STARTED
+  Issue 1: Utilizatorul are nevoie de un rebuild la containerele Docker pe serverul său de producție pentru a vedea fix-urile la căutarea de CUI (P1)
+     - **Attempted fixes**: S-a eliminat parametrul  care arunca erori pe date Integer din Atlas, s-a forțat fallback frontend din ES spre Mongo. Fix-ul e deja în cod.
+     - **Next debug checklist**: Instruit utilizatorul să dea comanda de rebuild.
+     - **Why fix this issue and what will be achieved with the fix?**: Căutarea după CUI va funcționa 100% și în producție.
+     - **Status**: USER VERIFICATION PENDING
      - **Is recurring issue?**: N
-     - **Should Test frontend/backend/both after fix?**: backend (script) + verificare UI
+     - **Should Test frontend/backend/both after fix?**: NA
+     - **Blocked on other issue**: NA
 
 **In progress Task List**:
- *(None - all started tasks in this session were successfully completed and pushed)*
+  Task 1: Import Coduri CAEN lipsă (Rev. 1, Rev. 2, Rev. 3) (P1)
+     - **Where to resume**: Agentul tocmai a terminat de primit output-ul de la web crawler pe site-ul de CAEN-uri. Urmează crearea unui script ( sau un one-off) pentru a parsa aceste detalii și a insera codurile lipsă în colecția .
+     - **What will be achieved with this?**: Descrieri SEO corecte și afișări valide în UI pentru ~716 coduri CAEN care în prezent lipsesc din colecție, dar sunt atașate la sute de mii de firme în DB.
+     - **Status**: IN PROGRESS
+     - **Should Test frontend/backend/both after fix?**: backend (verificare colecție db cu python -c)
+     - **Blocked on something**: NA
 
 **Upcoming and Future Tasks**
-    - Phase 5: Script independent pentru preluare detalii dosare Portal JUST (parti/sedinte) (P1) - *A fost acceptat de user în sesiuni anterioare dar s-a amânat din cauza priorităților UI/SEO*
+    - Phase 5: Script independent pentru preluare detalii dosare Portal JUST (parti/sedinte) (P1)
     - Phase 6: Complete Stripe Payment Checkout Flow for the Credit System & API Subscriptions (MOCKED currently) (P1)
     - Future Task: Admin subscription management (P2)
-    - Future Task: AI SEO Text Generation (P2) - Generare de descrieri SEO folosind AI direct din platformă.
     - Future Task: Export CSV/JSON (P3)
     - Future Task: Sistem de alerte email (P3)
-    - Future Task: Automatizarea adăugării noilor indexuri MongoDB imediat după  (P3)
 
 **Completed work in this session**
-- Optimizare PageSpeed  &  cu  și lazy loading pe grafice/componente grele (DONE)
-- Configurare Nginx cu gzip și cache-control pentru performanță (DONE)
-- Implementare Feature Top Firme (paginare 100, ranking) pe paginile Județ, Localitate, CAEN + backend support cu parametru  (DONE)
-- Adăugare UI & Backend Optimizare DB în Admin () cu suport pentru crearea a 12 indexuri lipsă (DONE)
-- Caching în memorie a agregărilor grele pentru rute de locații și CAEN, timpul a scăzut de la 24 sec la 0.15 sec. (DONE)
-- Reconfigurare extremă performanță  și  pentru mediu cu 128GB RAM (crescut uvicorn workers la 8, WT cache size la 40GB, nginx worker_connections la 4096) + pre-warm caching pe background la startup (DONE)
-- Normalizare DB diacritice vechi din Admin pt. județe și localități ( -> ), rezolvând duplicatele la numărare (DONE)
-- Fix Sitemap XML generare dinamică să preia toate 2.38M de firme, incluzând cele inactive (DONE)
-- Integrare completă tag-uri SEO via  (meta description dinamic 155 chars, canonical, keywords, publisher, robots) adaptate pe fiecare din cele 8 tipuri de pagini. (DONE)
-- Fix Type Matching în MongoDB pentru : query-urile acum suportă  cu  și  din cauza inconstanțelor datelor din Atlas Cloud (DONE)
+- Implementare script inteligent de normalizare diacritice cu euristici ( -> /) (DONE)
+- Refactorizare server.py în , ,  și auto-indexare db post-sync (DONE)
+- Modul complet Batch AI SEO Text Generation (Gemini Flash) cu UI in Admin () (DONE)
+- Rafinare Prompt AI SEO: folosește câmpul  cu prioritate față de nume, pentru a evita descrieri eronate (DONE)
+- Reproiectare Compactă Carduri Search Frontend (1 linie, chenar mic, click pe Locație/Județ, scos hiperlink de la tel) (DONE)
+- Fix Fallback Search: Căutarea CUI din frontend trece imediat la MongoDB dacă ES (Elasticsearch) returnează rezultate goale (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   Issue 1: Date text/nume corupte cu  (descris la Pending Issues)
-   - Debug checklist: Evaluare Atlas Cloud pentru denumiri firme/PFA. 
-   - Why to solve this issue and what will be achieved with this: Evită indexare SEO greșită și erori la căutarea fuzzy a entităților.
-   - Should Test frontend/backend/both after fix: backend db script.
-   - Is recurring issue? N
+ *(None)*
 
 **Known issue recurrence from previous fork**
   - Issue recurrence in previous fork: N/A
@@ -58,71 +59,68 @@ Aplicația este o platformă matură full-stack (React + FastAPI + MongoDB hibri
   - Status: RESOLVED
 
 **Code Architecture**
-
+?
 
 **Key Technical Concepts**
-- Platforma este setată la parametrii ridicați de producție (server cu 128GB RAM). Au fost modificate limitele pe MongoDB și Elasticsearch direct din . 
-- Sistem extrem de agresiv și rapid de in-memory caching în Python (FastAPI) a fost introdus pentru paginile generale (, ) de unde durează agregarea mult. Acest cache se invalidează la sincronizare Cloud->Local.
-- *Tipizarea datelor MongoDB*: Utilizatorul își generează DB-ul din exterior în Atlas MongoDB. Câmpul CUI ajunge deseori a fi Integer la import. Backend-ul este conceput cu siguranța că orice query care folosește parametrul  îl investighează prin ambele formate (ex: ).
+- FastAPI Backend modular.
+- Elasticsearch -> MongoDB fallback cascade (dacă ES are success dar 0 docs, DB va fi apelată garantat).
+- Generare AI în Batch: Limitat și iterativ, salvează progresul în  per record în mongoDB.
 
 **key DB schema**
-  - : Total: 2,381,831. Datele conțin probleme de diacritice. Câmpul  e mixed-type (str / int). S-au adăugat 12 indici din interfața de optimizare.
-  - : Conține parametrizările folosite de .
+  - : Câmp nou utilizat frecvent:  (string generat de AI). CUI este string + int mixt.
+  - : Colecția în care trebuie adăugate codurile lipsă (în prezent 615 documente).
 
 **changes in tech stack**
-  - Paginare pe sub-arrays mari, implementarea de in-memory object cache per variabilă. Code Splitting / Lazy routing in React ().
+  - Adăugat  pentru conexiunea securizată prin Emergent LLM key cu Google Gemini Flash.
 
 **All files of reference** 
-  1.  (Created pentru gestionarea indici DB manual din UI).
-  2.  (Created componenta React ptr DB tools).
-  3.  (Tuned for performance).
-  4.  (Core routing, type checking query, pre-warm cache background tasks).
-  5.  (App router map modified for Code Splitting).
+  -  (Created for AI)
+  -  (Created for AI SEO UI)
+  - , ,  (Created for refactor)
+  -  (Updated Search Cards)
+  -  (Updated fallback logic)
 
 **Areas that need refactoring**:
-  -  devine foarte lung (aprox 600 linii), multe endpoint-uri  și  stau încă aici în loc să fie în propriile .
+  -  a fost deja refactorizat cu succes. Momentan arhitectura e solidă.
 
 **key api endpoints**
-  -  & 
   - 
-  -  și 
+  -  (și endpoint-ul corelat )
+  - 
 
 **Critical Info for New Agent**
-  - **ATENȚIE**: Funcțiile care interoghează MongoDB după CUI nu trebuie să se bazeze pe  or . În Cloud, multe firme (precum PFA-urile) au stocat -ul ca de tip Număr/Integer. Păstrează mereu logica de fallback  la interogări!  nu funcționează pe numere și va crash-ui requestul pe Producție.
-  - Când faci teste de backend, asigură-te că le rulezi trecând un integer pentru un CUI din DB pentru a valida logica fallback. 
-  - La instalarea de dependențe de frontend folosește exclusiv yarn install v1.22.22
-[1/4] Resolving packages...
-[2/4] Fetching packages...
-[3/4] Linking dependencies...
-[4/4] Building fresh packages...
-success Saved lockfile.
-Done in 0.04s.. Orice npm update distruge contextul build-ului react.
+  - **Emergent LLM key**: A fost folosit pentru a activa Gemini 2.5 Flash pentru generare SEO fără să-i cerem chei suplimentare utilizatorului.
+  - **Query-uri MongoDB pe CUI**: **Nu folosi niciodată ** când cauți  în baza de date! Pe serverul de producție al utilizatorului (Atlas), multe PFA-uri au CUI setat ca tip , iar regex crapă cererea cu totul. Folosește  (match exact string vs. int).
+  - Când se fac schimbări pe Docker sau logica CUI de bază, utilizatorul trebuie anunțat clar să facă  la final.
 
 **documents and test reports created in this job**
-  -  (Pagespeed success)
-  -  (Top Firme success)
-  -  (Admin Db optimize success)
-  -  (Update la taskurile noi implementate)
+  -  (Test Normalizare DB)
+  -  (Test Refactorizare server.py)
+  -  (Test Generare SEO AI)
+  -  (A fost actualizat consistent)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - (User) ai in db si DemoANAF_firme vezi asa ceva? in atlas
- - (Agent) Verifică Atlas, arată colecțiile existente, anunță user-ul că nu există acea colecție.
- - (User) daca caut firma 20413044 in motorul de cautare imi zice ca nu este daca intru din db pe link iei este de ce nu afiseaza in search nimic de la persoana fizica
- - (Agent) Realizează că Atlas salvează CUI ca integer.  crapă. Schimbă query-urile de search, profil și fallback la type mismatch între String/Integer. Arată rezumat de fix-uri.
- - (User) [PENDING VERIFICATION] intra aici si dai click dupa aia pe un link : https://rapoartefirme.ro/search?q=persoana%20fizica (Test de la user pentru problema rezolvată — agentul a constatat că pe previe funcționează corect. Așteaptă ca utilizatorul să execute  pe server-ul lui pt a vedea fix-ul la query-urile integer).
+ - (User) Daca are numar de telefon afisezi doar un emoticon cu telefon fa chenarul mai mic si intr-o linie...
+ - (Agent) Rescrie cardurile Search sa fie compacte pe o linie. Ofera preview.
+ - (User) nu fa linkul de telefon clicabil lasal normal fara link
+ - (Agent) Scoate wrapper-ul de  pentru a-l face doar vizual.
+ - (User) A trimis 2 screenshot-uri spunand ca problema cu Not Found la persoanele fizice inca persista si ca apare cifra de afaceri desi el nu a cerut-o.
+ - (Agent) Scoate cifra de afaceri. Re-investigheaza Not found si realizeaza ca fallback-ul Frontend-ului intre Elasticsearch si MongoDB nu are loc cand rezultatele sunt . Repara .
+ - (User) [PENDING] decriere cod caen rev1 rev2 rev3 nu ai de unde sa importi?
 
 **Project Health Check:**
-- Broken: Data corruption (denumiri din Atlas cu  în loc de / pentru PFA-uri).
-- Mocked: Integrarea Stripe pentru cumpărare credite.
-- Working: Platformă stabilă cu performanță excelentă (128GB tuning, Redis-like var caching în python), Frontend Lazy load corect, Optimizare DB index completă, Sincronizare, Crawler search, Pagini SEO, și routing.
+- Broken: ~716 coduri CAEN vechi (ex: Rev 1) lipsesc din db, făcând aplicația să randeze nume goale la activități.
+- Mocked: Stripe payments.
+- Working: Platformă stabilă cu performanță excelentă, fallback la db ES->Mongo, AI SEO Batch Processor 100% funcțional.
 
 **3rd Party Integrations** 
 	 •	Stripe (Payments) — requires User API Key
+	 •	Gemini 2.5 Flash (Generare text SEO) — uses Emergent LLM Key (implementat via )
 
 **Testing status**
-  - Testing agent used after significant changes: YES (În iterațiile 8, 9, 10).
+  - Testing agent used after significant changes: YES (iterațiile 11, 12, 13).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None explicitly created (testing agent wrote temporary tests internally).
+  - Test files created: None manually.
   - Known regressions: N/A
 
 **Credentials to test flow:**
@@ -130,13 +128,13 @@ Done in 0.04s.. Orice npm update distruge contextul build-ului react.
   - Parola: 
 
 **What agent forgot to execute**
-  - (Nimic vital): Nu a restructurat  pentru modularitate deși mărimea sa (600+ linii) cu rute grele de search o cerea.
+  - Nimic. A implementat corect totul în afară de ultimul task de import CAEN care abia a fost preluat.
 
 **Debugging checklist for current issue**
-    Issue: Utilizatorul încă experimentează potențial Not found sau căutări stricate deoarece nu a dat rebuild pe serverul său, dar va întreba probabil cum să proceseze caracterele ?. De asemenea de reținut că query-urile CUI trebuie să rămână .
-    
+    Issue: Import de descrieri coduri CAEN lipsă (Rev.1, Rev.3).
+
     Backend files to check: 
-    -  (Asigură-te că  nu folosește regex pe )
-    - Dacă utilizatorul cere normalizarea la nivel de nume de firmă:  (extinderea funcției de normalizare pentru colecția , câmpul , gestionând cu grijă mapping-ul inteligent).
+    - Creați un script local scurt (e.g.  sau o rută de unică folosință în ) pentru a asimila rezultatele de la web crawler referitoare la CAEN și a le insera/suprascrie în colecția .
     
-    </analysis>
+    Database to check:
+    -  -> Ar trebui să existe după rularea importului. (În prezent lipsește).</analysis>
