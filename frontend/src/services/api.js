@@ -19,7 +19,7 @@ export const api = {
       const esRes = await fetch(`${API_URL}/api/elasticsearch/search/simple?${searchParams}`);
       if (esRes.ok) {
         const esData = await esRes.json();
-        if (esData.success && esData.data) {
+        if (esData.success && esData.data && esData.data.pagination.total > 0) {
           return {
             results: esData.data.results,
             total: esData.data.pagination.total,
@@ -33,7 +33,7 @@ export const api = {
       console.log('Elasticsearch not available, falling back to MongoDB');
     }
     
-    // Fallback to MongoDB search
+    // Fallback to MongoDB search (also when ES returns 0 results)
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value) searchParams.append(key, value);
