@@ -7,7 +7,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rapoarte-preview.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rapoarte-seo.preview.emergentagent.com').rstrip('/')
 
 # Test company CUI - AUTOMOB SOCIETATE COOPERATIVA
 TEST_CUI = "2113693"

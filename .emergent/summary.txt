@@ -1,58 +1,56 @@
-<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (inițial mFirme, acum rebranduită în RapoarteFirme), bazată pe date publice agregate (1.2 milioane active, peste 3.5 milioane total). Platforma necesită 3 zone distincte: Site public, Zonă User (autentificare, planuri), și Zonă Admin. Sistem de abonamente cu limitări de date. Migrare către o Arhitectură Hibridă (MongoDB local pentru viteză, sincronizat cu baza de date principală din Cloud). Adăugare API Keys management, motor de căutare Elasticsearch, sistem SEO dinamic, Generator Dinamic de Sitemap XML, analiză financiară pentru contabili, navigare pe județe/localități și coduri CAEN, plus integrare dosare Portal JUST și date BPI pe pagina firmei.
+<analysis>**original_problem_statement**: Construiește o platformă completă pentru afișarea firmelor românești (RapoarteFirme), bazată pe date publice agregate (2.38 milioane de firme). Platforma necesită Site public, Zonă User și Zonă Admin. Arhitectură hibridă (MongoDB local pentru viteză, Cloud pentru master). Funcționalități cerute recent: Optimizare performanță frontend (PageSpeed), Top Firme pe județ/localitate/CAEN, unelte de mentenanță și optimizare a bazei de date în admin (indexare/normalizare diacritice), ajustare configurație Docker pentru server puternic (128GB RAM), extindere Sitemap XML la toate 2.38M companii și implementare completă SEO (Meta descriptions dinamice, canonical, keywords, robots).
 
-**User's preferred language**: Romanian (INSTRUCT next agent to respond in the user's preferred language only: **Romanian**)
+**User's preferred language**: **Romanian** (INSTRUCT next agent to respond in the user's preferred language only)
 
 **what currently exists?**: 
-Aplicația este o platformă matură full-stack (React + FastAPI + MongoDB hibrid + Elasticsearch). În această sesiune a suferit un rebranding complet (din mFirme în RapoarteFirme) și a fost configurată integral pentru deploy-ul Docker pe serverul de producție al utilizatorului. Au fost rezolvate bug-uri critice pe frontend (afișarea detaliilor dosarelor, a graficelor financiare, cardurile de search). Sincronizarea datelor din Cloud în Local a fost mult îmbunătățită cu interfață de progres în timp real, posibilitatea de a seta URL-ul de cloud direct din admin și butoane pentru importul manual al datelor de referință (CAEN, localități, coduri poștale). Analiza financiară a fost extinsă cu calculul EBITDA. Aplicația folosește Nginx pentru a ruta cererile relative  către backend, rezolvând problemele de CORS/URL.
+Aplicația este o platformă matură full-stack (React + FastAPI + MongoDB hibrid). În această sesiune, frontend-ul a primit optimizări masive de PageSpeed (, code splitting), reducând bundle-ul principal substanțial. A fost adăugată caracteristica Top Firme cu paginare și ranking pe paginile de Locații/CAEN. În backend s-a adăugat caching în memorie pentru agregările grele (reducând timpul de încărcare de la 24s la 0.15s) + pre-warm cache task. A fost creată pagina  cu opțiuni de generare indici și normalizare diacritice masive. Sitemap-ul XML a fost ajustat să includă toate 2.38 milioane de companii. Setările Docker au fost scalate masiv pentru hardware-ul utilizatorului. Bug-urile severe de căutare din MongoDB (cauzate de  salvat ca  pe Atlas vs  local) au fost adresate la nivel de query-uri pe rute. Toate paginile publice au primit tag-uri SEO extinse (Helmet, canonical, dinamic meta descriptions).
 
 **Last working item**:
-    - **Last item agent was working**: Analizarea unui raport Google PageSpeed Insights furnizat de utilizator pentru a îmbunătăți performanța aplicației pe desktop (URL analizat: ). Agentul a rulat utilitarul  pe link-ul de PageSpeed, dar sesiunea s-a încheiat înainte de a oferi soluții sau de a face modificări.
-    - **Status**: IN PROGRESS
-    - **Agent Testing Done**: N
-    - **Which testing method agent to use?**: Frontend testing agent / Screenshot tool / Lighthouse CLI (dacă este disponibil) pentru a valida metricile de performanță.
+    - **Last item agent was working**: Fixarea bug-ului unde paginile firmelor (ex. PFA-uri) returnau not found pe Docker-ul de producție și nu apăreau în search. S-a descoperit că Atlas Cloud (producție) stochează  ca **integer**, iar codul căuta un  și încerca regex pe integer. Agentul a modificat query-urile în rute (, , , ) pentru a căuta atât ca string, cât și ca int (), și a oprit regex-ul simplu pe numere.
+    - **Status**: USER VERIFICATION PENDING (Utilizatorul trebuie să ruleze comanda de  pe serverul lui pentru a vedea fix-urile)
+    - **Agent Testing Done**: Y (Testat via bash și python pe setul de date existent)
+    - **Which testing method agent to use?**: manual testing by curl / python -c
     - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Optimizare PageSpeed / Performanță Frontend (P0)
-     - **Attempted fixes**: Sesiunea s-a întrerupt imediat după rularea tool-ului de crawl pe URL-ul PageSpeed.
-     - **Next debug checklist**: Identifică bottleneck-urile de performanță specifice aplicațiilor React SPA (ex: code splitting, lazy loading componentelor grele din , optimizarea pachetelor de icoane , pre-fetching date, optimizare răspuns API). Implementează React.lazy() pentru rute și verifică configurarea Nginx pentru compresie gzip/brotli și caching la nivel de browser.
-     - **Why fix this issue and what will be achieved with the fix?**: Scoruri mai bune în PageSpeed aduc o indexare SEO superioară și o experiență mai fluidă pentru utilizatori.
-     - **Status**: IN PROGRESS
+  Issue 1: Date corupte cu semne de întrebare  în loc de diacritice pe producție (P1)
+     - **Attempted fixes**: S-a implementat normalizarea pentru câmpul  și  (prin ). Nu a fost încă aplicată la  firmelor.
+     - **Next debug checklist**: În MongoDB Atlas, caracterele / la denumirile firmelor (ex. , ) apar ca . Trebuie discutat cu utilizatorul dacă dorește un script de curățare regex (cu grijă pentru false positives) sau o re-importare a datelor. Câmpurile implicate:  în db .
+     - **Why fix this issue and what will be achieved with the fix?**: Vizualizarea corectă a numelor în frontend și indexare corectă SEO/căutări, evitând PFA-uri cu caractere ciudate.
+     - **Status**: NOT STARTED
      - **Is recurring issue?**: N
-     - **Should Test frontend/backend/both after fix?**: Both (frontend bundle size + backend response time / Nginx config).
-     - **Blocked on other issue**: None
+     - **Should Test frontend/backend/both after fix?**: backend (script) + verificare UI
 
 **In progress Task List**:
-  - Task 1: Script independent pentru preluare detalii dosare Portal JUST (P1)
-     - **Where to resume**: Utilizatorul are nevoie de un script pe serverul său care să interogheze Portal JUST pentru dosarele existente în Atlas Cloud care nu au câmpurile  și  populate.
-     - **What will be achieved with this?**: Va asigura afișarea completă a timeline-ului dosarelor în  (care a fost deja reparat în această sesiune și așteaptă doar datele).
-     - **Status**: NOT STARTED
-     - **Should Test frontend/backend/both after fix?**: Backend (script python).
-     - **Blocked on something**: Trebuie întrebat utilizatorul dacă dorește implementarea acestuia acum sau preferă să continue cu optimizarea PageSpeed.
+ *(None - all started tasks in this session were successfully completed and pushed)*
 
 **Upcoming and Future Tasks**
-    - Phase 5: Complete Stripe Payment Checkout Flow for the Credit System & API Subscriptions (P1)
+    - Phase 5: Script independent pentru preluare detalii dosare Portal JUST (parti/sedinte) (P1) - *A fost acceptat de user în sesiuni anterioare dar s-a amânat din cauza priorităților UI/SEO*
+    - Phase 6: Complete Stripe Payment Checkout Flow for the Credit System & API Subscriptions (MOCKED currently) (P1)
     - Future Task: Admin subscription management (P2)
-    - Future Task: AI SEO Text Generation (P2) - Generare de descrieri SEO folosind AI.
-    - Future Task: Sistem de alerte email (P3)
+    - Future Task: AI SEO Text Generation (P2) - Generare de descrieri SEO folosind AI direct din platformă.
     - Future Task: Export CSV/JSON (P3)
-    - Future Task: Top Firme (sortare după cifra de afaceri) pe pagina de județ/localitate/CAEN.
-    - Future Task: Automatizarea adăugării noilor indexuri MongoDB imediat după  sau din scriptul general.
+    - Future Task: Sistem de alerte email (P3)
+    - Future Task: Automatizarea adăugării noilor indexuri MongoDB imediat după  (P3)
 
 **Completed work in this session**
-- Bug fix UI : Timeline-ul de dosare se deschide acum la click corect. (DONE)
-- Rebranding Complet (mFirme -> RapoarteFirme): S-au actualizat peste 30 de fișiere (Header, Footer, SEO, robots.txt, texte interne). (DONE)
-- Configurare Docker Production: Fix  error, creare fișier config Nginx pentru rutarea , fallback backend URL = . (DONE)
-- Creare automată Admin Seed: Scriptul adaugă  /  automat la startup-ul backend-ului dacă nu există. (DONE)
-- Fix Sincronizare Cloud->Local:  permite acum introducerea  direct din UI; s-au adăugat mesaje log live (terminal-style) în pagină și buton de import CAEN/localități. (DONE)
-- Fix Afișare Date Financiare: Backend-ul nu găsea  în tabelul . S-a refăcut logică din  și frontend-ul  pentru a afișa carduri financiare clare pe baza datelor reale. (DONE)
-- Calcul EBITDA: S-a adăugat estimarea EBITDA, Marja EBITDA și gradul de îndatorare în . (DONE)
-- Fix Performanță Pagini Locații/CAEN: S-au adăugat indexuri MongoDB obligatorii pentru , , . (DONE)
-- Îmbunătățiri Căutare (Header + Carduri): Bara de search din header face submit corect; cardurile de firme din  afișează acum status activ/inactiv, CAEN, Cifra afaceri și Număr angajați ca badges (DONE)
-- Eliminare widget/badge Emergent din . (DONE)
+- Optimizare PageSpeed  &  cu  și lazy loading pe grafice/componente grele (DONE)
+- Configurare Nginx cu gzip și cache-control pentru performanță (DONE)
+- Implementare Feature Top Firme (paginare 100, ranking) pe paginile Județ, Localitate, CAEN + backend support cu parametru  (DONE)
+- Adăugare UI & Backend Optimizare DB în Admin () cu suport pentru crearea a 12 indexuri lipsă (DONE)
+- Caching în memorie a agregărilor grele pentru rute de locații și CAEN, timpul a scăzut de la 24 sec la 0.15 sec. (DONE)
+- Reconfigurare extremă performanță  și  pentru mediu cu 128GB RAM (crescut uvicorn workers la 8, WT cache size la 40GB, nginx worker_connections la 4096) + pre-warm caching pe background la startup (DONE)
+- Normalizare DB diacritice vechi din Admin pt. județe și localități ( -> ), rezolvând duplicatele la numărare (DONE)
+- Fix Sitemap XML generare dinamică să preia toate 2.38M de firme, incluzând cele inactive (DONE)
+- Integrare completă tag-uri SEO via  (meta description dinamic 155 chars, canonical, keywords, publisher, robots) adaptate pe fiecare din cele 8 tipuri de pagini. (DONE)
+- Fix Type Matching în MongoDB pentru : query-urile acum suportă  cu  și  din cauza inconstanțelor datelor din Atlas Cloud (DONE)
 
 **Earlier issues found/mentioned but not fixed**
- *(None)*
+   Issue 1: Date text/nume corupte cu  (descris la Pending Issues)
+   - Debug checklist: Evaluare Atlas Cloud pentru denumiri firme/PFA. 
+   - Why to solve this issue and what will be achieved with this: Evită indexare SEO greșită și erori la căutarea fuzzy a entităților.
+   - Should Test frontend/backend/both after fix: backend db script.
+   - Is recurring issue? N
 
 **Known issue recurrence from previous fork**
   - Issue recurrence in previous fork: N/A
@@ -63,68 +61,68 @@ Aplicația este o platformă matură full-stack (React + FastAPI + MongoDB hibri
 
 
 **Key Technical Concepts**
-- Platforma funcționează într-un mediu Docker de producție pe serverul on-premise al utilizatorului. 
-- URL-ul backend-ului din frontend () este lăsat string gol (), iar Nginx rutează automat call-urile  la containerul backend-ului.
-- Baza de date hibridă: Datele se copiază din Atlas Cloud în MongoDB local ( și ) prin intermediul paginii Admin Sync, care suportă polling pentru vizualizarea statusului live. Datele de referință (CAEN, localități) se află doar în scripturile statice și se importă manual via UI Sync.
+- Platforma este setată la parametrii ridicați de producție (server cu 128GB RAM). Au fost modificate limitele pe MongoDB și Elasticsearch direct din . 
+- Sistem extrem de agresiv și rapid de in-memory caching în Python (FastAPI) a fost introdus pentru paginile generale (, ) de unde durează agregarea mult. Acest cache se invalidează la sincronizare Cloud->Local.
+- *Tipizarea datelor MongoDB*: Utilizatorul își generează DB-ul din exterior în Atlas MongoDB. Câmpul CUI ajunge deseori a fi Integer la import. Backend-ul este conceput cu siguranța că orice query care folosește parametrul  îl investighează prin ambele formate (ex: ).
 
 **key DB schema**
-  - : A primit indexuri noi pentru căutări rapide: , , .
-  - : Conține exclusiv informații de bilanț (active, datorii, capitaluri). Nu conține profit/cifra de afaceri direct; aceste date se găsesc de obicei sumarizate pe doc-ul firmei principale sub formă de , .
-  - : Include acum câmpul .
+  - : Total: 2,381,831. Datele conțin probleme de diacritice. Câmpul  e mixed-type (str / int). S-au adăugat 12 indici din interfața de optimizare.
+  - : Conține parametrizările folosite de .
 
 **changes in tech stack**
-  - Modificări specifice de deploy Nginx / React. Backend și frontend sunt separate în rețea dar comunică relativ prin Nginx ingress.
+  - Paginare pe sub-arrays mari, implementarea de in-memory object cache per variabilă. Code Splitting / Lazy routing in React ().
 
-**All files of reference**
-  -  (Componenta unde trebuie optimizat PageSpeed)
-  -  și  (Dacă optimizarea PageSpeed necesită gzip/caching)
-  - 
-  - 
-  - 
+**All files of reference** 
+  1.  (Created pentru gestionarea indici DB manual din UI).
+  2.  (Created componenta React ptr DB tools).
+  3.  (Tuned for performance).
+  4.  (Core routing, type checking query, pre-warm cache background tasks).
+  5.  (App router map modified for Code Splitting).
 
-**Areas that need refactoring**: 
-  -  are foarte multe sub-componente mari (, , ). Pentru PageSpeed, ar beneficia de  pentru a reduce bundle-ul inițial de JavaScript descărcat.
+**Areas that need refactoring**:
+  -  devine foarte lung (aprox 600 linii), multe endpoint-uri  și  stau încă aici în loc să fie în propriile .
 
 **key api endpoints**
-  -  (modificat recent pt a întoarce listă completă pre-procesată an per an)
-  -  (pentru declanșarea sync-ului)
-  -  (polling progress)
+  -  & 
+  - 
+  -  și 
 
 **Critical Info for New Agent**
-  - Utilizatorul testează direct pe **serverul său de producție** via Docker ( / ). Oferă întotdeauna utilizatorului comenzile exacte pe care trebuie să le ruleze pe serverul lui (ex: ).
-  - Agentul precedent s-a oprit în timpul analizării PageSpeed Insights (problema curentă). Fii gata să oferi un sumar și să începi optimizarea de performanță pe fișierele de Frontend/Nginx.
+  - **ATENȚIE**: Funcțiile care interoghează MongoDB după CUI nu trebuie să se bazeze pe  or . În Cloud, multe firme (precum PFA-urile) au stocat -ul ca de tip Număr/Integer. Păstrează mereu logica de fallback  la interogări!  nu funcționează pe numere și va crash-ui requestul pe Producție.
+  - Când faci teste de backend, asigură-te că le rulezi trecând un integer pentru un CUI din DB pentru a valida logica fallback. 
+  - La instalarea de dependențe de frontend folosește exclusiv yarn install v1.22.22
+[1/4] Resolving packages...
+[2/4] Fetching packages...
+[3/4] Linking dependencies...
+[4/4] Building fresh packages...
+success Saved lockfile.
+Done in 0.04s.. Orice npm update distruge contextul build-ului react.
 
 **documents and test reports created in this job**
-  -  (Updated cu branding nou)
-  -  (Updated partial)
-  - ==========================================
-   RapoarteFirme - Setup Productie
-==========================================
-Docker nu este instalat!
-Instaleaza: curl -fsSL https://get.docker.com | sh
-  -  (Updated)
-  - Nu s-au creat test_reports prin sub-agent în această sesiune (au fost bug fix-uri minore și config-uri vizuale testate cu screenshot_tool).
+  -  (Pagespeed success)
+  -  (Top Firme success)
+  -  (Admin Db optimize success)
+  -  (Update la taskurile noi implementate)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - (User) si arata un log ceva acolo jos sa vedem cum se sincronizeaza... (Agent a rezolvat cu live terminal log).
- - (User) A reclamat că Bilanțul nu se afișează deloc și județele/localitățile nu merg. (Agent a reparat structura de date, indexuri MongoDB).
- - (User) pe judete pe orase in cautari fa tot asa sub forma de tabel/chenar... 2. Casuta cauta firma de pe prima pagina nu merge... (Agent a implementat cardurile de search și a fixat caseta).
- - (User) la datele financiare ce le ai despre firme poti calcula ebitda?... (Agent a adăugat EBITDA, backend+frontend).
- - (User) ...sterge asta de peste tot (Badge-ul Emergent) (Agent a eliminat).
- - (User) [PENDING HUMAN MESSAGE] am facut o analiza cu google pe o pagina : https://pagespeed.web.dev/analysis/https-rapoartefirme-ro-firma-radval-com-srl-29139652/m7acf5qc13?form_factor=desktop poti sa intri sa verifici ce ai putea inbunatatii?
+ - (User) ai in db si DemoANAF_firme vezi asa ceva? in atlas
+ - (Agent) Verifică Atlas, arată colecțiile existente, anunță user-ul că nu există acea colecție.
+ - (User) daca caut firma 20413044 in motorul de cautare imi zice ca nu este daca intru din db pe link iei este de ce nu afiseaza in search nimic de la persoana fizica
+ - (Agent) Realizează că Atlas salvează CUI ca integer.  crapă. Schimbă query-urile de search, profil și fallback la type mismatch între String/Integer. Arată rezumat de fix-uri.
+ - (User) [PENDING VERIFICATION] intra aici si dai click dupa aia pe un link : https://rapoartefirme.ro/search?q=persoana%20fizica (Test de la user pentru problema rezolvată — agentul a constatat că pe previe funcționează corect. Așteaptă ca utilizatorul să execute  pe server-ul lui pt a vedea fix-ul la query-urile integer).
 
 **Project Health Check:**
-- Broken: Scoruri PageSpeed reduse pe CompanyPage.
-- Mocked: Stripe checkout (plata cu cardul pentru credite).
-- Working: Autentificare Docker, Sincronizare Atlas->Local (incl. indexare + referințe), UI Carduri Firme, Analiză Financiară EBITDA, UI Dosare.
+- Broken: Data corruption (denumiri din Atlas cu  în loc de / pentru PFA-uri).
+- Mocked: Integrarea Stripe pentru cumpărare credite.
+- Working: Platformă stabilă cu performanță excelentă (128GB tuning, Redis-like var caching în python), Frontend Lazy load corect, Optimizare DB index completă, Sincronizare, Crawler search, Pagini SEO, și routing.
 
 **3rd Party Integrations** 
 	 •	Stripe (Payments) — requires User API Key
 
 **Testing status**
-  - Testing agent used after significant changes: NO (modificările au fost în mare parte de UI/Docker config și s-au testat cu screenshot tool sau direct de către utilizator pe serverul său).
+  - Testing agent used after significant changes: YES (În iterațiile 8, 9, 10).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
+  - Test files created: None explicitly created (testing agent wrote temporary tests internally).
   - Known regressions: N/A
 
 **Credentials to test flow:**
@@ -132,203 +130,13 @@ Instaleaza: curl -fsSL https://get.docker.com | sh
   - Parola: 
 
 **What agent forgot to execute**
-  - S-a inițiat un  pentru raportul PageSpeed dar nu s-a continuat cu logica de soluționare. 
-  - (Opțional) La importul CAEN s-a pus buton, dar utilizatorul încă mai are nevoie de acel script pentru  /  din Portal JUST pe care l-a acceptat în Message 39 dar s-a deviat atenția spre rebranding.
+  - (Nimic vital): Nu a restructurat  pentru modularitate deși mărimea sa (600+ linii) cu rute grele de search o cerea.
 
 **Debugging checklist for current issue**
-    Issue: Optimizare PageSpeed pe 
+    Issue: Utilizatorul încă experimentează potențial Not found sau căutări stricate deoarece nu a dat rebuild pe serverul său, dar va întreba probabil cum să proceseze caracterele ?. De asemenea de reținut că query-urile CUI trebuie să rămână .
     
-    Frontend files to check: 
-    -  -> Introdu  pentru , ,  pentru a nu bloca renderul inițial.
-    -  -> Asigură-te că icoanele/graficele Recharts sunt încărcate optim.
-  
-    Backend/Config files to check:
-    -  -> Activează gzip compression dacă nu e activ:
-      
-    -  -> Adaugă cache-control headers pentru assets statice (, js, css, woff2).
-
-    events {
-    worker_connections 1024;
-}
-
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    sendfile on;
-    tcp_nopush on;
-    keepalive_timeout 65;
-
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied any;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    # Rate limiting
-    limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
-    limit_req_zone $binary_remote_addr zone=general:10m rate=60r/s;
-
-    upstream backend {
-        server backend:8001;
-    }
-
-    upstream frontend {
-        server frontend:80;
-    }
-
-    server {
-        listen 80;
-        server_name rapoartefirme.ro www.rapoartefirme.ro;
-
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-        # Sitemap URLs curate la nivel de domeniu
-        location = /sitemap.xml {
-            proxy_pass http://backend/api/sitemap.xml;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_cache_bypass $http_upgrade;
-        }
-
-        location ~ ^/sitemap-(.+)\.xml$ {
-            proxy_pass http://backend/api/sitemap-$1.xml;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_cache_bypass $http_upgrade;
-        }
-
-        # robots.txt
-        location = /robots.txt {
-            proxy_pass http://frontend;
-            proxy_set_header Host $host;
-        }
-
-        # API requests -> Backend
-        location /api {
-            limit_req zone=api burst=50 nodelay;
-
-            proxy_pass http://backend;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_cache_bypass $http_upgrade;
-            proxy_read_timeout 300s;
-            proxy_connect_timeout 75s;
-
-            # Upload size limit (for sync operations)
-            client_max_body_size 100M;
-        }
-
-        # Frontend (everything else)
-        location / {
-            limit_req zone=general burst=100 nodelay;
-
-            proxy_pass http://frontend;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
-    }
-
-    # HTTPS server (uncomment when SSL certificates are ready)
-    # server {
-    #     listen 443 ssl http2;
-    #     server_name rapoartefirme.ro www.rapoartefirme.ro;
-    #
-    #     ssl_certificate /etc/nginx/ssl/cert.pem;
-    #     ssl_certificate_key /etc/nginx/ssl/key.pem;
-    #     ssl_protocols TLSv1.2 TLSv1.3;
-    #     ssl_ciphers HIGH:!aNULL:!MD5;
-    #
-    #     # Same location blocks as above
-    #     location = /sitemap.xml { proxy_pass http://backend/api/sitemap.xml; proxy_set_header Host $host; }
-    #     location ~ ^/sitemap-(.+)\.xml$ { proxy_pass http://backend/api/sitemap-$1.xml; proxy_set_header Host $host; }
-    #     location /api { proxy_pass http://backend; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; proxy_read_timeout 300s; client_max_body_size 100M; }
-    #     location / { proxy_pass http://frontend; proxy_http_version 1.1; proxy_set_header Host $host; proxy_cache_bypass $http_upgrade; }
-    # }
-
-    # Redirect HTTP to HTTPS (uncomment when SSL is ready)
-    # server {
-    #     listen 80;
-    #     server_name rapoartefirme.ro www.rapoartefirme.ro;
-    #     return 301 https://$host$request_uri;
-    # }
-}
-server {
-    listen 80;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied any;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    # Handle React Router - SPA fallback
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Proxy API requests to backend
-    location /api {
-        proxy_pass http://backend:8001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 75s;
-        client_max_body_size 100M;
-    }
-
-    # Sitemap proxy
-    location = /sitemap.xml {
-        proxy_pass http://backend:8001/api/sitemap.xml;
-        proxy_set_header Host $host;
-    }
-
-    location ~ ^/sitemap-(.+)\.xml$ {
-        proxy_pass http://backend:8001/api/sitemap-$1.xml;
-        proxy_set_header Host $host;
-    }
-
-    # Cache static assets aggressively
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "OK";
-        add_header Content-Type text/plain;
-    }
-}</analysis>
+    Backend files to check: 
+    -  (Asigură-te că  nu folosește regex pe )
+    - Dacă utilizatorul cere normalizarea la nivel de nume de firmă:  (extinderea funcției de normalizare pentru colecția , câmpul , gestionând cu grijă mapping-ul inteligent).
+    
+    </analysis>
