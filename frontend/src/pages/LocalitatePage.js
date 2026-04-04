@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle, ArrowUpDown } from 'lucide-react';
+
+const PAGE_SIZE = 50;
 
 const LocalitatePage = () => {
   const { judetSlug, localitateSlug } = useParams();
@@ -11,15 +13,15 @@ const LocalitatePage = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const PAGE_SIZE = 50;
+  const [sort, setSort] = useState('cifra_afaceri');
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-  const loadCompanies = useCallback(async (pageNum = 1, q = '') => {
+  const loadCompanies = useCallback(async (pageNum = 1, q = '', sortBy = 'cifra_afaceri') => {
     setLoading(true);
     try {
       const skip = (pageNum - 1) * PAGE_SIZE;
       const res = await fetch(
-        `${API_URL}/api/locations/judet/${judetSlug}/${localitateSlug}?skip=${skip}&limit=${PAGE_SIZE}&q=${encodeURIComponent(q)}`
+        `${API_URL}/api/locations/judet/${judetSlug}/${localitateSlug}?skip=${skip}&limit=${PAGE_SIZE}&q=${encodeURIComponent(q)}&sort=${sortBy}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -36,20 +38,26 @@ const LocalitatePage = () => {
   }, [API_URL, judetSlug, localitateSlug]);
 
   useEffect(() => {
-    loadCompanies(1, '');
-  }, [loadCompanies]);
+    loadCompanies(1, '', sort);
+  }, [loadCompanies, sort]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    loadCompanies(1, search);
+    loadCompanies(1, search, sort);
+  };
+
+  const handleSort = (newSort) => {
+    setSort(newSort);
+    setPage(1);
+    loadCompanies(1, search, newSort);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const handlePage = (p) => {
     setPage(p);
-    loadCompanies(p, search);
+    loadCompanies(p, search, sort);
     window.scrollTo(0, 0);
   };
 
@@ -76,23 +84,43 @@ const LocalitatePage = () => {
           </p>
         </div>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex gap-2 mb-6 max-w-lg">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cauta firma dupa denumire sau CUI..."
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:border-primary text-sm"
-              data-testid="company-search"
-            />
+        {/* Search + Sort */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cauta firma dupa denumire sau CUI..."
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:border-primary text-sm"
+                data-testid="company-search"
+              />
+            </div>
+            <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90">
+              Cauta
+            </button>
+          </form>
+
+          <div className="flex items-center gap-2" data-testid="sort-controls">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+            {[
+              { key: 'cifra_afaceri', label: 'Cifra afaceri' },
+              { key: 'angajati', label: 'Angajati' },
+              { key: 'alfabetic', label: 'A-Z' },
+            ].map(s => (
+              <button
+                key={s.key}
+                onClick={() => handleSort(s.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${sort === s.key ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted text-muted-foreground'}`}
+                data-testid={`sort-${s.key}`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
-          <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90">
-            Cauta
-          </button>
-        </form>
+        </div>
 
         {/* Companies list */}
         {loading ? (
@@ -128,7 +156,7 @@ const LocalitatePage = () => {
                       <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{c.cui}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell">
                         {c.anaf_cod_caen && (
-                          <span title={c.caen_description}>{c.anaf_cod_caen}</span>
+                          <Link to={`/caen/${c.anaf_cod_caen}`} className="hover:text-primary font-mono" title={c.caen_description}>{c.anaf_cod_caen}</Link>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center hidden sm:table-cell">

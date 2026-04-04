@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle, MapPin } from 'lucide-react';
+import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle, MapPin, ArrowUpDown } from 'lucide-react';
+
+const PAGE_SIZE = 50;
+
+const makeSlug = (text) => {
+  if (!text) return '';
+  const diacritics = {'s':'s','ș':'s','ţ':'t','ț':'t','ă':'a','â':'a','î':'i'};
+  let slug = text.toLowerCase();
+  for (const [k, v] of Object.entries(diacritics)) slug = slug.split(k).join(v);
+  return slug.replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
+};
 
 const CaenPage = () => {
   const { cod } = useParams();
@@ -12,22 +22,14 @@ const CaenPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [judetFilter, setJudetFilter] = useState('');
-  const PAGE_SIZE = 50;
+  const [sort, setSort] = useState('cifra_afaceri');
   const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-  const makeSlug = (text) => {
-    if (!text) return '';
-    const diacritics = {'ş':'s','ș':'s','Ş':'S','Ș':'S','ţ':'t','ț':'t','Ţ':'T','Ț':'T','ă':'a','Ă':'A','â':'a','Â':'A','î':'i','Î':'I'};
-    let slug = text;
-    for (const [k, v] of Object.entries(diacritics)) slug = slug.split(k).join(v);
-    return slug.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
-  };
-
-  const loadCompanies = useCallback(async (pageNum = 1, q = '', judet = '') => {
+  const loadCompanies = useCallback(async (pageNum = 1, q = '', judet = '', sortBy = 'cifra_afaceri') => {
     setLoading(true);
     try {
       const skip = (pageNum - 1) * PAGE_SIZE;
-      const params = new URLSearchParams({ skip: String(skip), limit: String(PAGE_SIZE) });
+      const params = new URLSearchParams({ skip: String(skip), limit: String(PAGE_SIZE), sort: sortBy });
       if (q) params.set('q', q);
       if (judet) params.set('judet', judet);
       const res = await fetch(`${API_URL}/api/caen/code/${cod}?${params}`);
@@ -46,27 +48,33 @@ const CaenPage = () => {
   }, [API_URL, cod]);
 
   useEffect(() => {
-    loadCompanies(1, '', '');
-  }, [loadCompanies]);
+    loadCompanies(1, '', '', sort);
+  }, [loadCompanies, sort]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    loadCompanies(1, search, judetFilter);
+    loadCompanies(1, search, judetFilter, sort);
   };
 
   const handleJudetFilter = (j) => {
     const newFilter = judetFilter === j ? '' : j;
     setJudetFilter(newFilter);
     setPage(1);
-    loadCompanies(1, search, newFilter);
+    loadCompanies(1, search, newFilter, sort);
+  };
+
+  const handleSort = (newSort) => {
+    setSort(newSort);
+    setPage(1);
+    loadCompanies(1, search, judetFilter, newSort);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const handlePage = (p) => {
     setPage(p);
-    loadCompanies(p, search, judetFilter);
+    loadCompanies(p, search, judetFilter, sort);
     window.scrollTo(0, 0);
   };
 
@@ -104,16 +112,37 @@ const CaenPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSearch} className="flex gap-2 mb-6 max-w-lg">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cauta firma dupa denumire sau CUI..."
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:border-primary text-sm"
-              data-testid="company-search" />
+        {/* Search + Sort */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cauta firma dupa denumire sau CUI..."
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:border-primary text-sm"
+                data-testid="company-search" />
+            </div>
+            <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90">Cauta</button>
+          </form>
+
+          <div className="flex items-center gap-2" data-testid="sort-controls">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+            {[
+              { key: 'cifra_afaceri', label: 'Cifra afaceri' },
+              { key: 'angajati', label: 'Angajati' },
+              { key: 'alfabetic', label: 'A-Z' },
+            ].map(s => (
+              <button
+                key={s.key}
+                onClick={() => handleSort(s.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${sort === s.key ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted text-muted-foreground'}`}
+                data-testid={`sort-${s.key}`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
-          <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90">Cauta</button>
-        </form>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>

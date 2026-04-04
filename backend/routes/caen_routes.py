@@ -95,7 +95,8 @@ async def get_caen_companies(
     skip: int = 0,
     limit: int = 50,
     q: str = "",
-    judet: str = ""
+    judet: str = "",
+    sort: str = "cifra_afaceri"
 ):
     """Get companies by CAEN code with pagination and filters"""
     db = get_local_db()
@@ -125,7 +126,17 @@ async def get_caen_companies(
         "has_dosare": 1, "dosare_count": 1, "has_legal_issues": 1
     }
 
-    cursor = db.firme.find(query, projection).skip(skip).limit(limit)
+    # Sort
+    if sort == "cifra_afaceri":
+        sort_spec = [("mf_cifra_afaceri", -1)]
+    elif sort == "angajati":
+        sort_spec = [("mf_numar_angajati", -1)]
+    elif sort == "alfabetic":
+        sort_spec = [("denumire", 1)]
+    else:
+        sort_spec = [("mf_cifra_afaceri", -1)]
+
+    cursor = db.firme.find(query, projection).sort(sort_spec).skip(skip).limit(limit)
 
     companies = []
     async for c in cursor:

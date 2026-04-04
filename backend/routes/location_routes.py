@@ -149,13 +149,77 @@ async def get_judet_localities(
     }
 
 
+@router.get("/judet/{judet_slug}/top-firme")
+async def get_judet_top_companies(
+    judet_slug: str,
+    skip: int = 0,
+    limit: int = 100,
+    sort: str = "cifra_afaceri"
+):
+    """Top companies in a county sorted by revenue"""
+    db = get_local_db()
+    groups = await get_judet_groups(db)
+
+    if judet_slug not in groups:
+        return {"error": "Judet not found", "judet_slug": judet_slug}
+
+    judet_info = groups[judet_slug]
+    raw_names = judet_info["raw_names"]
+
+    query = {
+        "judet": {"$in": raw_names},
+        "mf_cifra_afaceri": {"$exists": True, "$ne": None, "$gt": 0}
+    }
+
+    total = await db.firme.count_documents(query)
+
+    projection = {
+        "_id": 0, "cui": 1, "denumire": 1, "judet": 1, "localitate": 1,
+        "anaf_cod_caen": 1, "caen_description": 1, "forma_juridica": 1,
+        "anaf_stare_startswith_inregistrat": 1,
+        "mf_cifra_afaceri": 1, "mf_profit_net": 1, "mf_numar_angajati": 1,
+        "mf_an_bilant": 1, "has_legal_issues": 1, "dosare_count": 1
+    }
+
+    if sort == "angajati":
+        sort_spec = [("mf_numar_angajati", -1)]
+    elif sort == "profit":
+        sort_spec = [("mf_profit_net", -1)]
+    else:
+        sort_spec = [("mf_cifra_afaceri", -1)]
+
+    cursor = db.firme.find(query, projection).sort(sort_spec).skip(skip).limit(limit)
+
+    companies = []
+    rank = skip + 1
+    async for c in cursor:
+        den = c.get("denumire", "")
+        cui = c.get("cui", "")
+        slug = make_slug(den) + "-" + cui if cui else make_slug(den)
+        c["slug"] = slug
+        c["rank"] = rank
+        rank += 1
+        companies.append(c)
+
+    return {
+        "judet": judet_info["name"],
+        "judet_slug": judet_slug,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "sort": sort,
+        "companies": companies
+    }
+
+
 @router.get("/judet/{judet_slug}/{localitate_slug}")
 async def get_locality_companies(
     judet_slug: str,
     localitate_slug: str,
     skip: int = 0,
     limit: int = 50,
-    q: str = ""
+    q: str = "",
+    sort: str = "cifra_afaceri"
 ):
     """List companies in a specific locality"""
     db = get_local_db()
@@ -206,7 +270,17 @@ async def get_locality_companies(
         "anaf_stare_startswith_inregistrat": 1
     }
 
-    cursor = db.firme.find(query, projection).skip(skip).limit(limit)
+    # Sort
+    if sort == "cifra_afaceri":
+        sort_spec = [("mf_cifra_afaceri", -1)]
+    elif sort == "angajati":
+        sort_spec = [("mf_numar_angajati", -1)]
+    elif sort == "alfabetic":
+        sort_spec = [("denumire", 1)]
+    else:
+        sort_spec = [("mf_cifra_afaceri", -1)]
+
+    cursor = db.firme.find(query, projection).sort(sort_spec).skip(skip).limit(limit)
 
     # Build slug for each company
     companies = []
@@ -225,5 +299,6 @@ async def get_locality_companies(
         "total": total,
         "skip": skip,
         "limit": limit,
+        "sort": sort,
         "companies": companies
     }
