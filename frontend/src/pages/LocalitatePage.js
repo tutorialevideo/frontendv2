@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle, ArrowUpDown } from 'lucide-react';
 
@@ -63,6 +64,14 @@ const LocalitatePage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{`Firme din ${localitateName}, ${judetName} | RapoarteFirme`}</title>
+        <meta name="description" content={`${total.toLocaleString('ro-RO')} firme inregistrate in ${localitateName}, judetul ${judetName}. Informatii complete: bilant, cifra de afaceri, contact, CUI, CAEN.`} />
+        <meta name="keywords" content={`firme ${localitateName}, firme ${judetName}, companii ${localitateName}, bilant firme ${localitateName}`} />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href={`https://rapoartefirme.ro/judet/${judetSlug}/${localitateSlug}`} />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 flex-wrap" data-testid="breadcrumb">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { MapPin, Building2, ChevronRight } from 'lucide-react';
 
@@ -36,6 +37,14 @@ const JudeteListPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Firme din Romania pe judete - Lista completa | RapoarteFirme</title>
+        <meta name="description" content={`Lista completa a firmelor din Romania organizate pe cele 42 de judete. Peste ${totalCompanies.toLocaleString('ro-RO')} firme cu informatii de bilant, cifra afaceri, contact.`} />
+        <meta name="keywords" content="firme romania judete, firme pe judete, companii romania, lista judete romania, firme judet" />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href="https://rapoartefirme.ro/judete" />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" data-testid="breadcrumb">

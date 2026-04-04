@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { MapPin, Building2, ChevronRight, ChevronLeft, Search, Trophy, TrendingUp, Users, AlertTriangle, CheckCircle, XCircle, ArrowUpDown } from 'lucide-react';
 
@@ -96,6 +97,14 @@ const JudetPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{`Firme din ${judetName} - Top firme, localitati | RapoarteFirme`}</title>
+        <meta name="description" content={`Lista completa cu ${totalCompanies.toLocaleString('ro-RO')} firme din judetul ${judetName}. Top firme dupa cifra de afaceri, profit, angajati. ${localities.length} localitati.`} />
+        <meta name="keywords" content={`firme ${judetName}, top firme ${judetName}, companii ${judetName}, localitati ${judetName}, bilant firme ${judetName}`} />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href={`https://rapoartefirme.ro/judet/${judetSlug}`} />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" data-testid="breadcrumb">

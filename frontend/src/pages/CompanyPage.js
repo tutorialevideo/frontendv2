@@ -135,11 +135,11 @@ const CompanyPage = () => {
     CUI: company?.cui || '',
     LOCALITATE: company?.localitate || '',
     JUDET: company?.judet || '',
-    CAEN: company?.caen || '',
-    CAEN_DESCRIERE: company?.caen_descriere || company?.caen_description || '',
+    CAEN: company?.anaf_cod_caen || '',
+    CAEN_DESCRIERE: company?.caen_description || '',
     AN: new Date().getFullYear().toString(),
-    CIFRA_AFACERI: company?.cifra_afaceri ? `${Number(company.cifra_afaceri).toLocaleString('ro-RO')} RON` : '',
-    PROFIT: company?.profit ? `${Number(company.profit).toLocaleString('ro-RO')} RON` : ''
+    CIFRA_AFACERI: company?.mf_cifra_afaceri ? `${Number(company.mf_cifra_afaceri).toLocaleString('ro-RO')} RON` : '',
+    PROFIT: company?.mf_profit_net ? `${Number(company.mf_profit_net).toLocaleString('ro-RO')} RON` : ''
   };
   
   const { title: seoTitle, description: seoDescription, index: seoIndex } = useSeoTemplate('company', seoVariables);
@@ -210,12 +210,54 @@ const CompanyPage = () => {
     ...(company.forma_juridica && { "legalName": `${company.denumire} - ${company.forma_juridica}` })
   };
 
+  // Build dynamic SEO meta
+  const companyName = company.denumire || 'Firmă';
+  const companyLoc = [company.localitate, company.judet].filter(Boolean).join(', ');
+  const companyCaen = company.anaf_cod_caen || '';
+  const companyCaenDesc = company.caen_description || '';
+  const companyCifra = company.mf_cifra_afaceri;
+  const companyAngajati = company.mf_numar_angajati;
+  
+  // Meta description: 70-155 chars, dynamic
+  const metaDesc = seoDescription || (() => {
+    let desc = `${companyName} - CUI ${company.cui}`;
+    if (companyLoc) desc += `, ${companyLoc}`;
+    desc += '.';
+    if (companyCifra) desc += ` Cifra afaceri: ${Number(companyCifra).toLocaleString('ro-RO')} RON.`;
+    if (companyAngajati) desc += ` ${companyAngajati} angajati.`;
+    if (companyCaenDesc) desc += ` ${companyCaenDesc}.`;
+    if (desc.length > 155) desc = desc.substring(0, 152) + '...';
+    return desc;
+  })();
+
+  // Canonical URL
+  const canonicalUrl = `https://rapoartefirme.ro/firma/${slug}`;
+  
+  // Keywords
+  const metaKeywords = [
+    companyName, `CUI ${company.cui}`, companyLoc,
+    companyCaen ? `CAEN ${companyCaen}` : '', companyCaenDesc,
+    'bilant', 'date firma', company.forma_juridica || ''
+  ].filter(Boolean).join(', ');
+
+  // Use seoTitle only if it contains the company name (avoid empty template results)
+  const effectiveTitle = seoTitle && company?.denumire && seoTitle.includes(company.denumire)
+    ? seoTitle.replace('mFirme.ro', 'RapoarteFirme')
+    : `${companyName} - CUI ${company.cui} | Date firma, bilant, contact`;
+  
+  const effectiveDesc = seoDescription && company?.denumire && seoDescription.includes(company.denumire)
+    ? seoDescription.replace('mFirme.ro', 'RapoarteFirme')
+    : metaDesc;
+
   return (
     <>
       <Helmet>
-        <title>{seoTitle || `${company.denumire} - CUI ${company.cui} | RapoarteFirme`}</title>
-        <meta name="description" content={seoDescription || `${company.denumire || 'Firmă'} din ${company.localitate || ''}, ${company.judet || ''}. CUI: ${company.cui || ''}.`} />
-        {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
+        <title>{effectiveTitle}</title>
+        <meta name="description" content={effectiveDesc} />
+        <meta name="keywords" content={metaKeywords} />
+        <meta name="robots" content={seoIndex !== false ? "index, follow" : "noindex, nofollow"} />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href={canonicalUrl} />
         <script type="application/ld+json">
           {JSON.stringify(structuredData)}
         </script>

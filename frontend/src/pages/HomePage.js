@@ -121,11 +121,12 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>{seoTitle || 'RapoarteFirme - Baza de date complete despre firmele din România'}</title>
-        <meta 
-          name="description" 
-          content={seoDescription || 'Caută și analizează peste 1.2 milioane de firme din România. Date actualizate zilnic: CUI, adresă, date financiare, indicatori.'}
-        />
+        <title>{seoTitle || 'RapoarteFirme - Baza de date a firmelor din Romania. Bilant, CUI, contact'}</title>
+        <meta name="description" content={seoDescription || 'RapoarteFirme.ro - Baza de date cu peste 2.3 milioane de firme din Romania. Informatii gratuite: bilant, cifra de afaceri, profit, numar angajati, CAEN, dosare instanta, contact.'} />
+        <meta name="keywords" content="firme romania, informatii firme, cui firma, bilant firme, baza date firme, caen, dosare firme, cifra afaceri, profit net, registrul comertului" />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href="https://rapoartefirme.ro/" />
         <script type="application/ld+json">
           {JSON.stringify(websiteSchema)}
         </script>

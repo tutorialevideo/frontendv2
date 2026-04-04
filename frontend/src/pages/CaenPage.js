@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRight, Search, ChevronLeft, AlertTriangle, CheckCircle, XCircle, MapPin, ArrowUpDown } from 'lucide-react';
 
@@ -80,6 +81,14 @@ const CaenPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{`CAEN ${cod}${caenInfo?.denumire ? ` - ${caenInfo.denumire}` : ''} | Firme Romania | RapoarteFirme`}</title>
+        <meta name="description" content={`${total.toLocaleString('ro-RO')} firme cu codul CAEN ${cod}${caenInfo?.denumire ? ` (${caenInfo.denumire})` : ''} din Romania. Informatii complete: bilant, cifra de afaceri, profit, contact.`} />
+        <meta name="keywords" content={`CAEN ${cod}, ${caenInfo?.denumire || ''}, firme CAEN ${cod}, companii ${caenInfo?.denumire || ''}, bilant firme`} />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href={`https://rapoartefirme.ro/caen/${cod}`} />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 flex-wrap" data-testid="breadcrumb">
           <Link to="/" className="hover:text-primary">Acasa</Link>

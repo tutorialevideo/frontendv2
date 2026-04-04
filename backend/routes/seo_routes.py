@@ -59,8 +59,8 @@ DEFAULT_TEMPLATES = {
     },
     "homepage": {
         "page_type": "homepage",
-        "title_template": "RapoarteFirme.ro - Baza de date a firmelor din România",
-        "description_template": "Caută printre 1.2 milioane de firme românești. Date financiare, bilanțuri, informații de contact și istoric complet.",
+        "title_template": "RapoarteFirme.ro - Baza de date a firmelor din Romania",
+        "description_template": "Cauta printre peste 2.3 milioane de firme romanesti. Date financiare, bilanturi, informatii de contact si istoric complet.",
         "index": True,
         "enabled": True
     },

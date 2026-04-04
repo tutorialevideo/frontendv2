@@ -155,9 +155,12 @@ const SearchPage = ({ initialFilters = {} }) => {
     <>
       {!isNested && (
         <Helmet>
-          <title>{seoTitle || `Căutare firme${query ? ` - ${query}` : ''} | RapoarteFirme`}</title>
-          <meta name="description" content={seoDescription || `Rezultate căutare: ${query || 'toate companiile din România'}`} />
-          {!seoIndex && <meta name="robots" content="noindex, nofollow" />}
+          <title>{seoTitle || `Cautare firme${query ? ` - ${query}` : ''} | RapoarteFirme`}</title>
+          <meta name="description" content={seoDescription || `Cautare firme din Romania${query ? `: ${query}` : ''}. Gaseste informatii complete: CUI, bilant, cifra de afaceri, contact, dosare instanta.`} />
+          <meta name="keywords" content={`cautare firme${query ? `, ${query}` : ''}, informatii firma, cui, bilant, romania`} />
+          <meta name="robots" content={seoIndex !== false && !query ? "index, follow" : "noindex, follow"} />
+          <meta name="publisher" content="RapoarteFirme.ro" />
+          <link rel="canonical" href={`https://rapoartefirme.ro/search${query ? `?q=${encodeURIComponent(query)}` : ''}`} />
           {searchResultsSchema && (
             <script type="application/ld+json">
               {JSON.stringify(searchResultsSchema)}

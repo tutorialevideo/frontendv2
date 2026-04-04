@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Search, Briefcase } from 'lucide-react';
 
@@ -50,6 +51,14 @@ const CaenListPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Coduri CAEN Romania - Lista completa activitati economice | RapoarteFirme</title>
+        <meta name="description" content="Lista completa a codurilor CAEN din Romania cu numarul de firme pe fiecare activitate economica. Gaseste firme dupa domeniu de activitate." />
+        <meta name="keywords" content="coduri CAEN, CAEN Romania, activitati economice, clasificare CAEN, firme pe domeniu" />
+        <meta name="robots" content="index, follow" />
+        <meta name="publisher" content="RapoarteFirme.ro" />
+        <link rel="canonical" href="https://rapoartefirme.ro/caen" />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" data-testid="breadcrumb">
           <Link to="/" className="hover:text-primary">Acasa</Link>
