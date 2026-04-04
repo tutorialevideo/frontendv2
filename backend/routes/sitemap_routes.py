@@ -55,7 +55,7 @@ async def sitemap_index():
     # Get generation status
     status = await app_db.sitemap_status.find_one({"type": "generation"}, {"_id": 0})
 
-    total_companies = await db.firme.count_documents({"anaf_stare_startswith_inregistrat": True, "cui": {"$exists": True, "$ne": None}})
+    total_companies = await db.firme.count_documents({"cui": {"$exists": True, "$ne": None}})
     company_pages = math.ceil(total_companies / MAX_URLS_PER_SITEMAP)
 
     lastmod = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -205,7 +205,7 @@ async def sitemap_companies(page_num: int):
     projection = {"_id": 0, "cui": 1, "denumire": 1}
 
     cursor = db.firme.find(
-        {"anaf_stare_startswith_inregistrat": True, "cui": {"$exists": True, "$ne": None}},
+        {"cui": {"$exists": True, "$ne": None}},
         projection
     ).skip(skip).limit(MAX_URLS_PER_SITEMAP)
 
@@ -235,8 +235,9 @@ async def get_sitemap_status(current_user=Depends(require_admin)):
 
     status = await app_db.sitemap_status.find_one({"type": "generation"}, {"_id": 0})
 
+    total_all = await db.firme.count_documents({"cui": {"$exists": True, "$ne": None}})
     total_active = await db.firme.count_documents({"anaf_stare_startswith_inregistrat": True, "cui": {"$exists": True, "$ne": None}})
-    company_pages = math.ceil(total_active / MAX_URLS_PER_SITEMAP)
+    company_pages = math.ceil(total_all / MAX_URLS_PER_SITEMAP)
 
     judete_count = len(await db.firme.distinct("judet"))
     caen_count = len(await db.firme.distinct("anaf_cod_caen"))
@@ -255,13 +256,14 @@ async def get_sitemap_status(current_user=Depends(require_admin)):
         "generating": status.get("generating", False) if status else False,
         "stats": {
             "company_pages": company_pages,
+            "total_companies": total_all,
             "total_active_companies": total_active,
             "urls_per_page": MAX_URLS_PER_SITEMAP,
             "judete": judete_count,
             "localitati": loc_count,
             "caen_codes": caen_count,
             "total_sitemaps": company_pages + 3,
-            "estimated_total_urls": total_active + loc_count + caen_count + judete_count + 4
+            "estimated_total_urls": total_all + loc_count + caen_count + judete_count + 4
         }
     }
 
