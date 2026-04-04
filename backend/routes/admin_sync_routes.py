@@ -266,6 +266,24 @@ async def run_full_sync(cloud_db, local_db, collections: list):
     except Exception:
         pass
     
+    # Auto-create all recommended indexes after sync
+    try:
+        from routes.admin_db_routes import RECOMMENDED_INDEXES
+        add_sync_log("Creare automata indexuri recomandate...")
+        idx_created = 0
+        for idx in RECOMMENDED_INDEXES:
+            col_name = idx["collection"]
+            try:
+                existing = await local_db[col_name].index_information()
+                if idx["name"] not in existing:
+                    await local_db[col_name].create_index(idx["keys"], name=idx["name"])
+                    idx_created += 1
+            except Exception as ie:
+                logger.warning(f"Auto-index {idx['name']} failed: {ie}")
+        add_sync_log(f"Indexuri: {idx_created} noi create (din {len(RECOMMENDED_INDEXES)} recomandate)", "success")
+    except Exception as e:
+        add_sync_log(f"Auto-indexare eșuată: {e}", "warning")
+    
     add_sync_log("Sincronizare completă!", "success")
     
     return results
