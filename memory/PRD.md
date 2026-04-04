@@ -1,7 +1,7 @@
 # RapoarteFirme Platform - Product Requirements Document
 
 ## Original Problem Statement
-Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFirme, domeniu: rapoartefirme.ro), bazata pe date publice agregate (1.2 milioane active, peste 3.5 milioane total). Platforma necesita 3 zone distincte: Site public, Zona User (autentificare, planuri), si Zona Admin. Sistem de abonamente cu limitari de date. Migrare catre o Arhitectura Hibrida (MongoDB local pentru viteza, sincronizat cu baza de date principala din Cloud). Adaugare API Keys management, motor de cautare Elasticsearch, sistem SEO dinamic, Generator Dinamic de Sitemap XML, analiza financiara pentru contabili, navigare pe judete/localitati si coduri CAEN, plus integrare dosare Portal JUST si date BPI pe pagina firmei.
+Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFirme, domeniu: rapoartefirme.ro), bazata pe date publice agregate (1.2 milioane active, peste 3.5 milioane total). Platforma necesita 3 zone distincte: Site public, Zona User (autentificare, planuri), si Zona Admin. Sistem de abonamente, Arhitectura Hibrida, API Keys, Elasticsearch, SEO dinamic, Sitemap XML, analiza financiara, navigare judete/CAEN, integrare dosare Portal JUST si BPI.
 
 ## Tech Stack
 - **Backend**: FastAPI, PyMongo, Motor (async MongoDB)
@@ -9,99 +9,84 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - **Database**: MongoDB (dual DB setup - local + cloud)
 - **Authentication**: JWT
 - **Search**: Elasticsearch
+- **AI**: Gemini 2.5 Flash (via emergentintegrations library)
 
-## Architecture (after refactoring)
+## Architecture
 ```
 /app/backend/
-  server.py              (~107 lines - orchestration only)
-  database.py            (DB connections)
-  auth.py                (JWT auth)
-  utils.py               (helpers)
+  server.py              (~115 lines - orchestration only)
+  database.py, auth.py, utils.py
   routes/
-    search_routes.py     (NEW - search + suggest)
-    company_routes.py    (NEW - company CUI/slug/financials)
-    geo_routes.py        (NEW - judete/localitati/caen/stats)
-    admin_sync_routes.py (+ auto-indexing after sync)
+    search_routes.py     (search + suggest)
+    company_routes.py    (company CUI/slug/financials)
+    geo_routes.py        (judete/localitati/caen/stats)
+    seo_gen_routes.py    (AI SEO text generation - Gemini Flash)
+    admin_sync_routes.py (sync + auto-indexing)
     admin_db_routes.py   (DB optimization + qmark normalization)
-    location_routes.py   (location pages + top firme)
-    caen_routes.py       (CAEN pages)
-    financial_routes.py  (financial detail routes)
-    legal_routes.py      (legal/court/BPI routes)
-    sitemap_routes.py    (XML sitemap generation)
-    seo_routes.py        (SEO templates)
-    auth_routes.py       (login/register)
-    ... (other admin/user routes)
+    location_routes.py, caen_routes.py, financial_routes.py
+    legal_routes.py, sitemap_routes.py, seo_routes.py
+    auth_routes.py, user_routes.py, admin_routes.py, etc.
+/app/frontend/
+  src/pages/
+    AdminSeoGenPage.js   (AI SEO generation admin page)
+    AdminDbOptimizePage.js, CompanyPage.js, SearchPage.js, etc.
 ```
 
-## What's Been Implemented
+## What's Been Implemented (Session 16 - April 2026)
 
-### Sessions 1-15 - Core Platform + All Features
-(See previous PRD entries)
+### 1. Question Mark Normalization (? -> S/T)
+- Smart heuristic `_guess_qmark()` with Romanian linguistic rules
+- Endpoints: preview + normalize
+- 230 firms auto-fixed, 84 more identified with word-end patterns
 
-### Session 16 - Question Mark Normalization + Refactoring
-**Date: April 2026**
+### 2. server.py Refactoring (603 -> 115 lines)
+- Extracted to: search_routes.py, company_routes.py, geo_routes.py
+- Clean separation of concerns
 
-#### Question Mark Normalization (? -> S/T)
-- Smart heuristic `_guess_qmark()` with linguistic context rules
-- `_is_real_qmark()` to skip real question marks
-- Endpoints: `GET /api/admin/db/qmark-preview`, `POST /api/admin/db/qmark-normalize`
-- Frontend: "Corectare Caractere Corupte (?)" section in Admin DB Optimize
-- Results: 230 firms auto-fixed, 84 more identified (word-end patterns)
+### 3. Auto-Indexing After Sync
+- After run_full_sync(), 12 RECOMMENDED_INDEXES auto-created
 
-#### server.py Refactoring (603 -> 107 lines)
-- Extracted search endpoints to `routes/search_routes.py`
-- Extracted company endpoints to `routes/company_routes.py`
-- Extracted geo/stats endpoints to `routes/geo_routes.py`
-- server.py now contains only app creation, middleware, router includes, and sitemap aliases
-
-#### Auto-Indexing After Sync
-- After `run_full_sync()` completes, all 12 RECOMMENDED_INDEXES are auto-created
-- Only creates indexes that don't already exist (safe for re-runs)
-- Logged in sync state for admin visibility
+### 4. AI SEO Text Generation (Gemini Flash)
+- Batch processing with configurable concurrency (1-10 parallel)
+- Background async task with start/stop/status
+- Preview per company (no save)
+- Companies processed by revenue (biggest first)
+- SEO text displayed on company page + used as meta description
+- Admin page: /admin/seo-gen with stats, progress bar, ETA, preview
+- 7 companies successfully generated (test runs)
+- User's own Google API key configured
 
 ## Key API Endpoints
-- `GET /api/search` - Search companies (search_routes.py)
-- `GET /api/search/suggest` - Autocomplete (search_routes.py)
-- `GET /api/company/cui/{cui}` - Company by CUI (company_routes.py)
-- `GET /api/company/slug/{slug}` - Company by slug (company_routes.py)
-- `GET /api/company/{cui}/financials` - Financial data (company_routes.py)
-- `GET /api/geo/judete` - Counties list (geo_routes.py)
-- `GET /api/geo/localitati` - Localities list (geo_routes.py)
-- `GET /api/caen/top` - Top CAEN codes (geo_routes.py)
-- `GET /api/stats/overview` - Platform stats (geo_routes.py)
-- `GET /api/admin/db/stats` - DB health (admin_db_routes.py)
-- `GET /api/admin/db/qmark-preview` - Preview qmark fixes (admin_db_routes.py)
-- `POST /api/admin/db/qmark-normalize` - Apply qmark fixes (admin_db_routes.py)
-- `GET /api/sitemap.xml` - Sitemap index
-
-## Database Schema
-- `firme`: 2,381,831 companies. CUI mixed-type (str/int). 12+ indexes.
-- `bilanturi`: Financial data
-- `dosare`: Court cases
-- `bpi_records`: BPI insolvency
-- `caen_codes`: 615 CAEN Rev.2 codes
-- `postal_codes`: 55,123 postal codes
+- `GET /api/search` - Search companies
+- `GET /api/company/cui/{cui}` - Company by CUI ($or int/str)
+- `GET /api/admin/seo-gen/status` - Generation status
+- `POST /api/admin/seo-gen/start` - Start batch ({concurrency, limit})
+- `POST /api/admin/seo-gen/stop` - Stop generation
+- `GET /api/admin/seo-gen/preview/{cui}` - Preview for one company
+- `GET /api/admin/db/qmark-preview` - Preview qmark fixes
+- `POST /api/admin/db/qmark-normalize` - Apply qmark fixes
 
 ## Prioritized Backlog
 
 ### P1 (High Priority)
-- [ ] Integrate Stripe checkout for credit purchases (currently MOCKED)
+- [ ] Integrate Stripe checkout for credits (currently MOCKED)
 - [ ] Script preluare detalii dosare Portal JUST (parti/sedinte)
 
 ### P2 (Medium Priority)
-- [ ] AI-generated SEO text for companies
 - [ ] Admin subscription management
 - [ ] Export CSV/JSON
 
-### P3 (Future/Nice to Have)
-- [ ] Email alerts for company indicator changes
+### P3 (Future)
+- [ ] Email alerts
 - [ ] Company comparison tool
 - [ ] Industry analytics dashboard
 
 ## Notes for Next Developer
-1. CUI queries MUST use `$or` with both `str(cui)` and `int(cui)` — Atlas stores CUI as integer
-2. Use `yarn` for frontend deps (npm breaks build)
+1. CUI queries: MUST use `$or` with `str(cui)` and `int(cui)`
+2. Frontend: use `yarn` only (npm breaks build)
 3. Admin: admin@mfirme.ro / Admin123!
-4. Stripe checkout is MOCKED
+4. Stripe checkout: MOCKED
 5. Elasticsearch indexes ALL companies (not just active)
-6. Auto-indexing runs after every sync (RECOMMENDED_INDEXES from admin_db_routes.py)
+6. Auto-indexing runs after every sync
+7. Gemini API key: configured in backend/.env as GEMINI_API_KEY
+8. SEO batch generation: runs as background task, survives only within same process (restarts reset state)
