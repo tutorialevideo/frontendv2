@@ -32,6 +32,15 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
     AdminDbOptimizePage.js, CompanyPage.js, SearchPage.js, etc.
 ```
 
+## What's Been Implemented (Session 17 - Feb 2026)
+
+### 5. CAEN Codes Import & Cleanup
+- Imported CAEN Rev.2 & Rev.3 codes (615 -> 1330 docs, script: `import_caen_codes.py`)
+- Updated 380 CAEN Rev.1 descriptions from generic to proper Romanian (script: `update_caen_rev1_descriptions.py`)
+- Upserted 15 new Rev.1 codes missing from DB
+- Final: 1345 total CAEN codes, 1066 with valid descriptions
+- 279 remaining generic = section/division-level codes (not used by any firm)
+
 ## What's Been Implemented (Session 16 - April 2026)
 
 ### 1. Question Mark Normalization (? -> S/T)
