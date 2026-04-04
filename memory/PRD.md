@@ -12,188 +12,87 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 
 ## What's Been Implemented
 
-### Session 1 - Core MVP
-- Basic search and company profile pages
-- User authentication system (JWT)
-- Favorites functionality
-- Admin login and basic dashboard
+### Sessions 1-10 - Core Platform
+- Search, company profiles, user auth (JWT), favorites, admin dashboard
+- Financial charts, KPIs, CAEN codes, postal codes
+- Credits system, hybrid database architecture
+- Dynamic SEO templates, financial analysis for accountants
+- Legal info (JUST + BPI), locations/CAEN navigation
+- Full sync Atlas->Local (2.38M firme)
 
-### Session 2 - Financial Charts + Postal Codes
-- Financial Chart with Dual Lines (Cifra de afaceri + Profit net)
-- 3 KPI cards showing latest year data with growth percentages
-- Romanian Postal Codes Integration (55,123 codes)
-
-### Session 3 - CAEN Codes Integration
-- 615 CAEN Rev.2 codes from ONRC
-- Auto-lookup of CAEN description in company API
-
-### Session 4 - Credits System
-- Credits + Daily Free Views System (10 bonus credits at registration, 5 free/day)
-- Admin Toggle for Credits System
-- Credit packages (50/200/500 credits)
-
-### Session 5 - Hybrid Database Architecture
-- Local MongoDB for Fast Reads (1.2M firme + 413K bilanturi)
-- Direct Sync endpoint
-- Admin Sync Dashboard
-
-### Session 6 - Bug Fix & API Utilities
-- Fixed JSON Parsing Error
-- Created API Utility Functions (safeJsonParse, safeFetch, createApiClient)
-
-### Session 7 - Dynamic SEO Templates
-- SEO Templates Admin Page (6 page types)
-- Dynamic Variables System
-- SEO Hook for Frontend
-- JSON-LD Structured Data (HomePage, CompanyPage, SearchPage)
-
-### Session 8 - Analiza Financiara pentru Contabili
-- Financial Indicators API (ROA, ROE, lichiditate, solvabilitate, etc.)
-- Health Score 0-100
-- FinancialIndicators Component pe pagina firmei
-- Admin Financial Dashboard
-- Raport PDF/HTML descarcabil
-
-### Session 9 - Legal Info Integration + Admin Filters
-- LegalInfo Component on CompanyPage (Dosare JUST + BPI)
-- Admin: Filtrare Firme Radiate & Date Incomplete (4 filtre)
-- 4 API endpoints legal
-
-### Session 10 - Locations, CAEN Nav, Legal Flags, Full Sync
-- Navigare Firme pe Judete/Localitati (pagini dedicate)
-- Browsing Firme pe Coduri CAEN
-- Pre-compute legal flags (has_dosare, dosare_count, has_bpi, bpi_count)
-- Sync complet Atlas -> Local (2.38M firme, 3.5M dosare, 235K bpi)
-- Linkuri clickabile judet/localitate/CAEN din profilul firmei
-- Generator Dinamic Sitemap XML
-
-### Session 11 (Current) - Bug Fix LegalInfo Expand + Rebranding + Docker Production
-**Date: April 2026**
-- FIX: Backend legal_routes.py - mapare corecta campuri (stadiu, categorie, materie, data_modificare)
-- FIX: Frontend LegalInfo.js - expand dosar arata acum Categorie, Stadiu, Materie, Ultima actualizare
-- FIX: Mesaj informativ cand parti/sedinte lipsesc din DB
-- FIX: Timeline sedinte cu design vertical (border-left + cercuri)
-- REBRANDING: mFirme -> RapoarteFirme (rapoartefirme.ro)
-  - Header logo: R + RapoarteFirme
-  - Footer: RapoarteFirme
-  - Admin: RapoarteFirme Admin
-  - Toate titlurile paginilor actualizate (| RapoarteFirme)
-  - JSON-LD: rapoartefirme.ro
-  - SEO templates default: RapoarteFirme.ro
-  - Sitemap URL: rapoartefirme.ro
-  - robots.txt: rapoartefirme.ro
-  - Backend API title: RapoarteFirme API
-  - Raport financiar footer: RapoarteFirme.ro
-  - Stripe plan name: RapoarteFirme
-  - Nu s-au schimbat: DB names (mfirme_local, mfirme_app), email admin (admin@mfirme.ro), ES index (mfirme_companies)
-- DOCKER PRODUCTION READY:
-  - docker-compose.production.yml - 5 servicii: MongoDB, Elasticsearch, Backend, Frontend, Nginx
-  - backend/Dockerfile.production - Python 3.11, uvicorn cu 4 workers
-  - frontend/Dockerfile.production - yarn build + nginx alpine
-  - nginx/nginx.conf - Reverse proxy cu sitemap URL masking, rate limiting, SSL ready
-  - frontend/nginx.conf - SPA fallback + API proxy + sitemap proxy
-  - requirements.docker.txt - Dependinte actualizate si curate
-  - .env.example - Template producție
-  - setup-production.sh - Script one-command setup
-  - DEPLOYMENT.md - Ghid complet deployment, SSL, backup/restore
+### Session 11 - Bug Fixes + Rebranding + Docker
+- LegalInfo expand fix, mFirme->RapoarteFirme rebranding
+- Docker production setup (5 services)
 
 ### Session 12 - PageSpeed Optimization
-**Date: April 2026**
-- CODE SPLITTING: React.lazy() + Suspense pe toate cele 25+ pagini din App.js
-- LAZY LOADING: FinancialChart (Recharts), LegalInfo, FinancialIndicators se incarca on-demand pe CompanyPage
-- FONT OPTIMIZATION: Mutat Google Fonts din CSS @import (render-blocking) in HTML link tags cu preconnect
-- NGINX GZIP: Redus gzip_min_length de la 1024 la 256, adaugat gzip_comp_level 6, extins gzip_types
-- NGINX CACHE: Adaugat Cache-Control headers (1y, immutable) pentru assets statice in nginx.conf productie
-- CLEANUP: Eliminat badge Emergent din index.html, eliminat font Inter nefolosit, setat lang="ro"
-- Bundle main.js redus la ~278K (de la estimat 600K+ monolitic), Recharts in chunk separat 380K
+- React.lazy() code splitting, font optimization, nginx gzip/cache
 
-### Session 13 - Top Firme pe Judete/Localitati/CAEN
-**Date: April 2026**
-- BACKEND: Endpoint nou GET /api/locations/judet/{slug}/top-firme cu paginare si sortare (cifra_afaceri, profit, angajati)
-- BACKEND: Parametru sort adaugat pe /api/locations/judet/{slug}/{localitate} si /api/caen/code/{cod}
-- FRONTEND JudetPage: Sistem tab-uri (Top Firme / Localitati), tabel rankat cu medalii podium top 3, paginare top 100/pagina
-- FRONTEND LocalitatePage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
-- FRONTEND CaenPage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
+### Session 13 - Top Firme
+- Top companies ranking per county/locality/CAEN with pagination and sorting
 
-### Session 14 - Optimizare DB Admin Page + Indexuri Auto
+### Session 14 - DB Optimization Admin
+- 12 recommended indexes, health score, diacritics normalization (ş→ș, ţ→ț)
+- In-memory cache for heavy aggregations (24s→0.14s)
+- Docker production tuning for 128GB RAM server
+
+### Session 15 - CUI Type Fix + SEO
+- Fix CUI int/string mismatch in MongoDB queries ($or fallback)
+- Complete SEO tags (Helmet, canonical, meta descriptions) on all pages
+- Sitemap XML expanded to all 2.38M companies
+
+### Session 16 (Current) - Question Mark Normalization
 **Date: April 2026**
-- BACKEND: Endpoint-uri noi GET /api/admin/db/stats, POST /api/admin/db/create-index, POST /api/admin/db/create-all-indexes
-- BACKEND: 12 indexuri recomandate predefinite (judet, localitate, caen, cifra_afaceri, profit, angajati, compuse, dosare.cui, bpi.cui, users.email)
-- FRONTEND: Pagina AdminDbOptimizePage cu scor sanatate, carduri statistici, lista indexuri lipsa/active, detalii colectii expandabile
-- SIDEBAR: 'Sincronizare DB' transformat in dropdown 'Baza de Date' cu sub-items: Sincronizare + Optimizare DB
-- Toate 12 indexurile au fost create cu succes dupa testare, scor sanatate 100%
-- Raspuns la intrebarea user: Top Firme se sincronizeaza automat dupa fiecare import (sortarea e dinamica)
-- Normalizare diacritice: buton in Optimizare DB care converteste ş→ș, ţ→ț in campurile judet/localitate (7640 valori, 1M+ docs)
-- Cache agregari grele (judete/CAEN): 24s→0.14s, pre-warm la startup, invalidare la sync
-- Docker production optimizat: MongoDB 40GB WiredTiger + zstd, ES 8GB heap, 8 uvicorn workers, Nginx auto+epoll+4096 conn
+- BACKEND: Smart heuristic function `_guess_qmark()` that determines if `?` should be `Ș` or `Ț` based on linguistic context (position, surrounding characters, Romanian language rules)
+- BACKEND: `_is_real_qmark()` function that distinguishes real question marks (like "AUZI ? PRODUCTIONS SRL") from corrupted diacritics
+- BACKEND: Endpoints `GET /api/admin/db/qmark-preview` and `POST /api/admin/db/qmark-normalize` with confidence levels (high/medium/low)
+- FRONTEND: New "Corectare Caractere Corupte (?)" section in AdminDbOptimizePage with scan button, confidence filters, preview table, and apply button
+- RESULTS: First batch fixed 230 firms automatically. Second batch identified 84 more (word-end patterns). Only 4 records with real `?` marks correctly skipped.
+- Confidence: 57 high, 26 medium, 1 low (false positive: `MA + MA WHAT? SRL`)
 
 ## Database Schema
 
 ### mfirme_local (Local MongoDB - PRIMARY reads)
-- `firme` - Company data + pre-computed flags (has_dosare, dosare_count, has_bpi, bpi_count, has_legal_issues)
+- `firme` - 2,381,831 companies. CUI is mixed-type (str/int). 12 custom indexes.
 - `bilanturi` - Financial data (firma_id -> firme.id)
-- `dosare` - Court cases (firma_id, numar_dosar, institutie, obiect, stadiu, categorie, materie)
+- `dosare` - Court cases
 - `bpi_records` - BPI insolvency records
-- `lichidatori` - Liquidators
 - `caen_codes` - 615 CAEN Rev.2 codes
 - `postal_codes` - 55,123 Romanian postal codes
-- `localities` - 13,856 aggregated locality records
-- `sync_status` - Tracks last sync per collection
 
 ### mfirme_app (Read-Write)
-- `users` - User accounts
-- `company_overrides` - Admin manual edits
-- `audit_logs` - Admin action tracking
-- `user_credits` - User credit balances and viewed companies
-- `app_settings` - System-wide settings
-- `credit_transactions` - Credit purchase logs
-- `seo_settings` - SEO templates per page type
-- `api_keys` - API keys for premium users
+- `users`, `company_overrides`, `audit_logs`, `user_credits`, `app_settings`, `credit_transactions`, `seo_settings`, `api_keys`
 
 ## Key API Endpoints
 - `GET /api/search` - Search companies
-- `GET /api/company/cui/{cui}` - Get company by CUI
-- `GET /api/company/{cui}/financials` - Get multi-year financial data
-- `GET /api/legal/summary/{cui}` - Legal summary
-- `GET /api/legal/dosare/{cui}` - Court cases with details
-- `GET /api/legal/bpi/{cui}` - BPI records
-- `GET /api/financial/indicators/{cui}` - Financial indicators
-- `GET /api/locations/judete` - Counties
-- `GET /api/locations/judet/{slug}/top-firme` - Top companies per county (sorted, paginated)
-- `GET /api/caen/codes` - CAEN codes
-- `GET /api/seo/templates/public` - SEO templates
+- `GET /api/company/cui/{cui}` - Get company by CUI ($or int/str)
+- `GET /api/locations/judet/{slug}/top-firme` - Top companies per county
+- `GET /api/admin/db/stats` - DB statistics
+- `GET /api/admin/db/qmark-preview` - Preview ? → Ș/Ț replacements
+- `POST /api/admin/db/qmark-normalize` - Apply replacements
 - `GET /api/sitemap/index.xml` - Sitemap index
 
 ## Prioritized Backlog
 
 ### P1 (High Priority)
 - [ ] Integrate Stripe checkout for credit purchases (currently MOCKED)
-- [ ] Complete Stripe payment flow verification
-- [ ] Admin subscription management
+- [ ] Script preluare detalii dosare Portal JUST (parti/sedinte)
 
 ### P2 (Medium Priority)
 - [ ] AI-generated SEO text for companies
+- [ ] Admin subscription management
 - [ ] Export CSV/JSON
-- [ ] Bulk SEO metadata editing
-- [ ] VPC Architecture (separate DB server)
 
 ### P3 (Future/Nice to Have)
 - [ ] Email alerts for company indicator changes
-- [x] "Top Firme" sorting on judet/localitate/CAEN pages
-- [ ] Badge rosu/verde on search cards for has_legal_issues
 - [ ] Company comparison tool
 - [ ] Industry analytics dashboard
-- [ ] Automate precompute_legal_flags.py post-sync
+- [ ] Auto-index after sync_all
 
 ## Notes for Next Developer
-1. Financial data mapping: `firme.id` -> `bilanturi.firma_id`
-2. Always use `venituri_totale` as fallback for `cifra_afaceri`
-3. Postal code normalization handles: diacritics, MUNICIPIUL/SECTOR prefixes
-4. Never write to `justportal` - use `company_overrides` for admin edits
-5. User speaks Romanian - keep UI text in Romanian
-6. CAEN lookup: strip to 4 digits and query `caen_codes.cod`
-7. PyMongo warning: Never use `if db:` - use `if db is not None:`
-8. JSON Parsing: Always use safe JSON parsing pattern (parse once into variable)
-9. Admin credentials: admin@mfirme.ro / Admin123!
-10. Dosare in local DB have fields: id, firma_id, numar_dosar, institutie, obiect, data_dosar, stadiu, categorie, materie. Fields `parti` and `sedinte` are NOT currently populated.
-11. Stripe checkout is MOCKED - not yet integrated with real Stripe API
+1. CUI queries MUST use `$or` with both `str(cui)` and `int(cui)` — Atlas stores CUI as integer
+2. Use `yarn` for frontend deps (npm breaks build)
+3. Admin: admin@mfirme.ro / Admin123!
+4. Stripe checkout is MOCKED
+5. `server.py` is 600+ lines — needs refactoring into routes/
+6. Elasticsearch indexes ALL companies (not just active)
+7. Question mark normalization: 230 fixed automatically, 84 remaining need admin review via Admin > Baza de Date > Optimizare DB

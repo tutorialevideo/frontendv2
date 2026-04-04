@@ -401,16 +401,28 @@ def _is_real_qmark(name, pos):
     n = len(name)
     after = name[pos + 1] if pos + 1 < n else ""
     before = name[pos - 1] if pos > 0 else ""
-    # ? at end of word / string → real
-    if not after or after in " \t\n\"')-":
+
+    # Standalone ? (space/start before AND space/end after) → real
+    if (pos == 0 or before in " -(") and (not after or after in " -)\""):
         return True
-    # preceded by . (e.g. ...?)
-    if before == ".":
+
+    # ? preceded by . or another diacritic (Ş/Ț/Ș etc) → real or noise
+    if before in ".ȘȚŞŢșțşţ":
         return True
-    # not followed by a letter or period → real
-    if not after.isalpha() and after != ".":
+
+    # ? followed by " or ) at end → real punctuation
+    if after in "\"')" and not before.isalpha():
         return True
-    return False
+
+    # ? followed by letter or period → not real (corrupted diacritic)
+    if after.isalpha() or after == ".":
+        return False
+
+    # ? at end or before space/dash, preceded by a letter → corrupted
+    if before.isalpha():
+        return False
+
+    return True
 
 
 def _guess_qmark(name, pos):
@@ -428,6 +440,23 @@ def _guess_qmark(name, pos):
     # ── Before T / C / K → always Ș (ȘT, ȘC valid; ȚT, ȚC are not) ──
     if after in "TCK":
         return "Ș", "high"
+
+    # ── Word-end patterns: ? at end of word (before space/dash/end) ──
+    is_we = pos == n - 1 or (pos + 1 < n and name[pos + 1] in " -)")
+    if is_we and before in V:
+        if before == "U":
+            return "Ț", "high"       # IONUȚ
+        if before == "O":
+            return "Ș", "high"       # DOBOȘ, CUCOȘ, DRAGOȘ
+        if before == "A":
+            return "Ș", "high"       # PUȘCAȘ, BOTAȘ
+        if before in "EI":
+            return "Ș", "medium"     # ambiguous (CREȚ vs BORTEȘ)
+        return "Ț", "medium"
+    if is_we and before == "N":
+        return "Ț", "medium"         # LOBONȚ
+    if is_we:
+        return "Ț", "low"            # consonant + ? at end — rare
 
     # ── Word-start heuristics ──
     if is_ws:
