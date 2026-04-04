@@ -349,8 +349,7 @@ const SearchPage = ({ initialFilters = {} }) => {
                       {/* Contact icons */}
                       {company.anaf_telefon && (
                         <span
-                          onClick={e => { e.preventDefault(); window.location.href = `tel:${company.anaf_telefon}`; }}
-                          className="text-green-600 cursor-pointer hover:text-green-800"
+                          className="text-green-600"
                           title={company.anaf_telefon}
                           data-testid={`result-phone-${index}`}
                         >
