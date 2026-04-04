@@ -41,6 +41,18 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - Final: 1345 total CAEN codes, 1066 with valid descriptions
 - 279 remaining generic = section/division-level codes (not used by any firm)
 
+### 6. Admin CAEN Management Page (`/admin/caen`)
+- **Stats dashboard**: Total codes, valid descriptions, generic, used by firms
+- **Rev.1 Update button**: Run batch update from UI (replaces generic with proper Romanian descriptions)
+- **CAEN codes table**: Paginated (50/page, 27 pages), searchable by cod/denumire, filterable (Toate/Valide/Generice)
+- **Inline editing**: Click edit icon -> modify name/sectiune -> save
+- **Add new code**: Form with cod, denumire, sectiune (auto-detect section letter)
+- **Delete with confirmation**: Two-step delete (click -> confirm)
+- **CSV Import**: Upload CSV with cod;name;sectiune columns, auto-detect delimiter (comma/semicolon/tab), template download
+- Backend: `/app/backend/routes/admin_caen_routes.py` (7 endpoints)
+- Frontend: `/app/frontend/src/pages/AdminCaenPage.js`
+- Navigation: Sidebar -> Baza de Date -> Coduri CAEN
+
 ## What's Been Implemented (Session 16 - April 2026)
 
 ### 1. Question Mark Normalization (? -> S/T)
