@@ -28,7 +28,7 @@ const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [seoOpen, setSeoOpen] = useState(location.pathname.startsWith('/admin/seo'));
-  const [dbOpen, setDbOpen] = useState(location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db'));
+  const [dbOpen, setDbOpen] = useState(location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db') || location.pathname.startsWith('/admin/caen'));
 
   const navigationItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -45,6 +45,7 @@ const AdminLayout = ({ children }) => {
   const dbSubItems = [
     { name: 'Sincronizare', path: '/admin/sync' },
     { name: 'Optimizare DB', path: '/admin/db-optimize' },
+    { name: 'Coduri CAEN', path: '/admin/caen' },
   ];
 
   const seoSubItems = [
@@ -136,7 +137,7 @@ const AdminLayout = ({ children }) => {
                 onClick={() => setDbOpen(!dbOpen)}
                 data-testid="admin-nav-baza-de-date"
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                  location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db')
+                  location.pathname.startsWith('/admin/sync') || location.pathname.startsWith('/admin/db') || location.pathname.startsWith('/admin/caen')
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}

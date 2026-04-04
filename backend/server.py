@@ -74,6 +74,7 @@ from routes.search_routes import router as search_router
 from routes.company_routes import router as company_router
 from routes.geo_routes import router as geo_router
 from routes.seo_gen_routes import router as seo_gen_router
+from routes.admin_caen_routes import router as admin_caen_router
 
 for r in [
     auth_router, user_router, subscription_router,
@@ -83,6 +84,7 @@ for r in [
     seo_router, financial_router, legal_router,
     location_router, caen_router, sitemap_router, admin_db_router,
     search_router, company_router, geo_router, seo_gen_router,
+    admin_caen_router,
 ]:
     app.include_router(r)
 
