@@ -107,6 +107,14 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - CLEANUP: Eliminat badge Emergent din index.html, eliminat font Inter nefolosit, setat lang="ro"
 - Bundle main.js redus la ~278K (de la estimat 600K+ monolitic), Recharts in chunk separat 380K
 
+### Session 13 - Top Firme pe Judete/Localitati/CAEN
+**Date: April 2026**
+- BACKEND: Endpoint nou GET /api/locations/judet/{slug}/top-firme cu paginare si sortare (cifra_afaceri, profit, angajati)
+- BACKEND: Parametru sort adaugat pe /api/locations/judet/{slug}/{localitate} si /api/caen/code/{cod}
+- FRONTEND JudetPage: Sistem tab-uri (Top Firme / Localitati), tabel rankat cu medalii podium top 3, paginare top 100/pagina
+- FRONTEND LocalitatePage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
+- FRONTEND CaenPage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
+
 ## Database Schema
 
 ### mfirme_local (Local MongoDB - PRIMARY reads)
@@ -139,6 +147,7 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - `GET /api/legal/bpi/{cui}` - BPI records
 - `GET /api/financial/indicators/{cui}` - Financial indicators
 - `GET /api/locations/judete` - Counties
+- `GET /api/locations/judet/{slug}/top-firme` - Top companies per county (sorted, paginated)
 - `GET /api/caen/codes` - CAEN codes
 - `GET /api/seo/templates/public` - SEO templates
 - `GET /api/sitemap/index.xml` - Sitemap index
@@ -158,7 +167,7 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 
 ### P3 (Future/Nice to Have)
 - [ ] Email alerts for company indicator changes
-- [ ] "Top Firme" sorting on judet/localitate/CAEN pages
+- [x] "Top Firme" sorting on judet/localitate/CAEN pages
 - [ ] Badge rosu/verde on search cards for has_legal_issues
 - [ ] Company comparison tool
 - [ ] Industry analytics dashboard
