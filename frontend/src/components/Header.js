@@ -46,13 +46,30 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center space-x-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = e.target.elements.headerQ.value.trim();
+                if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+              }}
+              className="relative hidden sm:flex items-center"
+              data-testid="header-search-form"
+            >
+              <Search className="absolute left-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                name="headerQ"
+                type="text"
+                placeholder="Caută firmă..."
+                className="pl-8 pr-3 py-1.5 text-sm border border-border rounded-lg focus:outline-none focus:border-primary bg-background w-44 lg:w-56"
+                data-testid="header-search-input"
+              />
+            </form>
             <button
               onClick={() => navigate('/search')}
-              className="flex items-center space-x-2 px-3 py-1.5 text-sm text-muted-foreground border border-border rounded-lg hover:border-primary/50 transition-colors"
-              data-testid="header-search-button"
+              className="sm:hidden flex items-center px-2 py-1.5 text-sm text-muted-foreground border border-border rounded-lg"
+              data-testid="header-search-button-mobile"
             >
               <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Caută firmă...</span>
             </button>
 
             {isAuthenticated ? (
