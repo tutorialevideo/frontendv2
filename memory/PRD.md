@@ -115,6 +115,15 @@ Construieste o platforma completa pentru afisarea firmelor romanesti (RapoarteFi
 - FRONTEND LocalitatePage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
 - FRONTEND CaenPage: Butoane sortare (Cifra afaceri, Angajati, A-Z), implicit sortare dupa cifra afaceri
 
+### Session 14 - Optimizare DB Admin Page + Indexuri Auto
+**Date: April 2026**
+- BACKEND: Endpoint-uri noi GET /api/admin/db/stats, POST /api/admin/db/create-index, POST /api/admin/db/create-all-indexes
+- BACKEND: 12 indexuri recomandate predefinite (judet, localitate, caen, cifra_afaceri, profit, angajati, compuse, dosare.cui, bpi.cui, users.email)
+- FRONTEND: Pagina AdminDbOptimizePage cu scor sanatate, carduri statistici, lista indexuri lipsa/active, detalii colectii expandabile
+- SIDEBAR: 'Sincronizare DB' transformat in dropdown 'Baza de Date' cu sub-items: Sincronizare + Optimizare DB
+- Toate 12 indexurile au fost create cu succes dupa testare, scor sanatate 100%
+- Raspuns la intrebarea user: Top Firme se sincronizeaza automat dupa fiecare import (sortarea e dinamica)
+
 ## Database Schema
 
 ### mfirme_local (Local MongoDB - PRIMARY reads)
