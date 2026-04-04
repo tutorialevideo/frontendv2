@@ -250,6 +250,8 @@ async def get_company_by_cui(cui: str, current_user = Depends(get_current_user_o
     
     normalized_cui = normalize_cui(cui)
     result = await db.firme.find_one({"cui": normalized_cui})
+    if not result and normalized_cui.isdigit():
+        result = await db.firme.find_one({"cui": int(normalized_cui)})
     
     if not result:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -294,7 +296,10 @@ async def get_company_by_slug(slug: str, current_user = Depends(get_current_user
     cui = parts[1]
     normalized_cui = normalize_cui(cui)
     
+    # Try string first, then integer (Atlas Cloud may store as int)
     result = await db.firme.find_one({"cui": normalized_cui})
+    if not result and normalized_cui.isdigit():
+        result = await db.firme.find_one({"cui": int(normalized_cui)})
     
     if not result:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -425,6 +430,8 @@ async def get_company_financials(cui: str):
     db = get_companies_db()
     normalized_cui = normalize_cui(cui)
     company = await db.firme.find_one({"cui": normalized_cui})
+    if not company and normalized_cui.isdigit():
+        company = await db.firme.find_one({"cui": int(normalized_cui)})
     
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
