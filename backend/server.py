@@ -73,6 +73,7 @@ from routes.admin_db_routes import router as admin_db_router
 from routes.search_routes import router as search_router
 from routes.company_routes import router as company_router
 from routes.geo_routes import router as geo_router
+from routes.seo_gen_routes import router as seo_gen_router
 
 for r in [
     auth_router, user_router, subscription_router,
@@ -81,7 +82,7 @@ for r in [
     api_keys_router, public_api_router, elasticsearch_router,
     seo_router, financial_router, legal_router,
     location_router, caen_router, sitemap_router, admin_db_router,
-    search_router, company_router, geo_router,
+    search_router, company_router, geo_router, seo_gen_router,
 ]:
     app.include_router(r)
 

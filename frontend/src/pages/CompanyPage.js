@@ -218,8 +218,9 @@ const CompanyPage = () => {
   const companyCifra = company.mf_cifra_afaceri;
   const companyAngajati = company.mf_numar_angajati;
   
-  // Meta description: 70-155 chars, dynamic
-  const metaDesc = seoDescription || (() => {
+  // Meta description: prioritize AI-generated, then SEO template, then dynamic
+  const aiSeoDesc = company?.seo_description;
+  const metaDesc = aiSeoDesc || seoDescription || (() => {
     let desc = `${companyName} - CUI ${company.cui}`;
     if (companyLoc) desc += `, ${companyLoc}`;
     desc += '.';
@@ -245,9 +246,11 @@ const CompanyPage = () => {
     ? seoTitle.replace('mFirme.ro', 'RapoarteFirme')
     : `${companyName} - CUI ${company.cui} | Date firma, bilant, contact`;
   
-  const effectiveDesc = seoDescription && company?.denumire && seoDescription.includes(company.denumire)
-    ? seoDescription.replace('mFirme.ro', 'RapoarteFirme')
-    : metaDesc;
+  const effectiveDesc = aiSeoDesc
+    ? (aiSeoDesc.length > 155 ? aiSeoDesc.substring(0, 152) + '...' : aiSeoDesc)
+    : (seoDescription && company?.denumire && seoDescription.includes(company.denumire)
+      ? seoDescription.replace('mFirme.ro', 'RapoarteFirme')
+      : metaDesc);
 
   return (
     <>
@@ -359,6 +362,13 @@ const CompanyPage = () => {
             )}
           </div>
         </div>
+
+        {/* AI SEO Description */}
+        {aiSeoDesc && (
+          <div className="bg-card border border-border rounded-xl p-5" data-testid="seo-description">
+            <p className="text-sm leading-relaxed text-muted-foreground">{aiSeoDesc}</p>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

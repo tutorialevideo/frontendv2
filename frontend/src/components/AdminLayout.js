@@ -50,6 +50,7 @@ const AdminLayout = ({ children }) => {
   const seoSubItems = [
     { name: 'SEO Templates', path: '/admin/seo' },
     { name: 'Generator Sitemap', path: '/admin/seo/sitemap' },
+    { name: 'Generare Texte AI', path: '/admin/seo-gen' },
   ];
 
   const handleLogout = () => {

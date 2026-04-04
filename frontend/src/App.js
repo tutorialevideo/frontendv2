@@ -33,6 +33,7 @@ const AdminSeoPage = lazy(() => import('./pages/AdminSeoPage'));
 const AdminSitemapPage = lazy(() => import('./pages/AdminSitemapPage'));
 const AdminFinancialDashboard = lazy(() => import('./pages/AdminFinancialDashboard'));
 const AdminDbOptimizePage = lazy(() => import('./pages/AdminDbOptimizePage'));
+const AdminSeoGenPage = lazy(() => import('./pages/AdminSeoGenPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -78,6 +79,7 @@ function AppContent() {
             <Route path="/admin/seo/sitemap" element={<AdminSitemapPage />} />
             <Route path="/admin/financial" element={<AdminFinancialDashboard />} />
             <Route path="/admin/db-optimize" element={<AdminDbOptimizePage />} />
+            <Route path="/admin/seo-gen" element={<AdminSeoGenPage />} />
           </Routes>
         </Suspense>
       </main>
