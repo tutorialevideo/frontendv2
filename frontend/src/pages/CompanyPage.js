@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
-import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart, FileText, DollarSign, Activity, Shield, ChevronDown, ChevronUp, Scale } from 'lucide-react';
+import { Building2, MapPin, Phone, Calendar, TrendingUp, Users, Briefcase, Lock, Heart, DollarSign, Activity, Shield, ChevronDown, ChevronUp, Scale } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCredits } from '../contexts/CreditsContext';
 import { useSeoTemplate } from '../hooks/useSeoTemplate';
 import api from '../services/api';
+
+const FinancialChart = lazy(() => import('../components/FinancialChart'));
+const FinancialIndicators = lazy(() => import('../components/FinancialIndicators'));
+const LegalInfo = lazy(() => import('../components/LegalInfo'));
 
 const makeSlug = (text) => {
   if (!text) return '';
@@ -14,9 +18,6 @@ const makeSlug = (text) => {
   for (const [k, v] of Object.entries(diacritics)) slug = slug.split(k).join(v);
   return slug.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
 };
-import FinancialChart from '../components/FinancialChart';
-import FinancialIndicators from '../components/FinancialIndicators';
-import LegalInfo from '../components/LegalInfo';
 
 const CompanyPage = () => {
   const { slug } = useParams();
@@ -372,7 +373,9 @@ const CompanyPage = () => {
         </div>
 
         {/* Financial Chart */}
-        <FinancialChart cui={company.cui} />
+        <Suspense fallback={<div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+          <FinancialChart cui={company.cui} />
+        </Suspense>
 
         {/* Financial Indicators - for accountants */}
         <div className="mt-8">
@@ -380,7 +383,9 @@ const CompanyPage = () => {
             <Activity className="w-5 h-5 text-primary" />
             Analiză Financiară Detaliată
           </h2>
-          <FinancialIndicators cui={company.cui} />
+          <Suspense fallback={<div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+            <FinancialIndicators cui={company.cui} />
+          </Suspense>
         </div>
 
         {/* Legal Info - Dosare & BPI */}
@@ -389,7 +394,9 @@ const CompanyPage = () => {
             <Scale className="w-5 h-5 text-primary" />
             Informații Juridice
           </h2>
-          <LegalInfo cui={company.cui} />
+          <Suspense fallback={<div className="bg-card border border-border rounded-xl p-6 flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+            <LegalInfo cui={company.cui} />
+          </Suspense>
         </div>
 
         {/* Main Content Grid */}
