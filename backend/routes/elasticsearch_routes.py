@@ -6,6 +6,7 @@ Handles indexing, searching, and management of Elasticsearch
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query
 from database import get_app_db, get_companies_db
 from auth import get_current_user
+from utils import create_company_slug
 from datetime import datetime, timezone
 from bson import ObjectId
 from pydantic import BaseModel
@@ -515,10 +516,13 @@ async def search_companies(request: SearchRequest):
             source = hit.get("_source", {})
             highlight = hit.get("highlight", {})
             
+            cui_val = source.get("cui", "")
+            denumire_val = source.get("denumire", "")
             results.append({
-                "cui": source.get("cui"),
-                "denumire": source.get("denumire"),
-                "denumire_highlight": highlight.get("denumire", [source.get("denumire")])[0] if highlight.get("denumire") else None,
+                "slug": create_company_slug(denumire_val, str(cui_val)),
+                "cui": cui_val,
+                "denumire": denumire_val,
+                "denumire_highlight": highlight.get("denumire", [denumire_val])[0] if highlight.get("denumire") else None,
                 "judet": source.get("judet"),
                 "localitate": source.get("localitate"),
                 "adresa": source.get("adresa"),
@@ -529,6 +533,8 @@ async def search_companies(request: SearchRequest):
                 "mf_cifra_afaceri": source.get("mf_cifra_afaceri"),
                 "mf_numar_angajati": source.get("mf_numar_angajati"),
                 "mf_an_bilant": source.get("mf_an_bilant"),
+                "anaf_telefon": source.get("telefon"),
+                "anaf_fax": source.get("fax"),
                 "score": hit.get("_score")
             })
         
